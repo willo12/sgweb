@@ -75,7 +75,8 @@
                     var value = handle_nan(data.value);
  
                     var w=500,
-                        h=300;
+                        h=300,
+                        wcb=50;
               
          //           var M = d3.max(d3.max(value)),
          //               m = d3.min(d3.min(value));
@@ -89,18 +90,137 @@
                               .attr("height",h)
 
         //
-       //     svg =      pcolor(svg,value, ycoord_edges,xcoord_edges,m,M,50,true,true)
-              
+    //        svg=pcolor(svg,value, ycoord_edges,xcoord_edges,m,M,24,wcb,true,true)
 
-           
+    //        svg = plot_contour(svg,d3.transpose(value),ycoord,xcoord,m,M,12,wcb, false, false, false, true);
 
-            svg = plot_contour(svg,d3.transpose(value),ycoord,xcoord,m,M,10,50, false, false, false);
+             
 
-   //       svg = plot_contour(svg,d3.transpose(value),ycoord,xcoord,m,M,10,50, false, false, [0.5]);
+              plot(svg,[[1,16,3,4,1],[5,3,5,4]  ] ,[[0,1,2,3,4],[0,2,3,4] ])
+
 
               })
             });
 
+function plot(svg,data, xcoord){
+    // expects data to be either an array of numbers
+    // or an array of such arrays (multiple curves)
+
+    if (data[0].length == undefined){
+        data=[data];
+        xcoord=[xcoord];
+    }
+
+    // use nested max/ min as per mbostock answer on stackoverflow
+    var My = d3.max(data.map(function(array) {
+  return d3.max(array);
+}));
+
+    var my = d3.min(data.map(function(array) {
+  return d3.min(array);
+}));
+
+    var Mx = d3.max(xcoord.map(function(array) {
+  return d3.max(array);
+}));
+
+    var mx = d3.min(xcoord.map(function(array) {
+  return d3.min(array);
+}));
+
+
+
+    console.log( 'mx and Mx: ' + mx + ' ' + Mx)
+
+    var w=svg.attr("width")
+    var h=svg.attr("height")
+ 
+
+    var lineData = [],
+        lines = [],
+        xc,
+        yc     
+ 
+
+    for (var j=0;j<data.length;j++){
+        lineData = []
+        xc=xcoord[j]
+        yc=data[j]
+        for (var i=0;i<yc.length;i++){
+            
+            lineData.push({x:xc[i],y:yc[i]})
+        lines.push(lineData)
+
+
+        }
+    }
+   
+   //     zs
+     
+
+ //   x=d3.scale.linear().range([0,w]).domain([0,data[0].length]),
+ //   y=d3.scale.linear().range([0,h]).domain([0,data.length]);
+
+//d3.zip(xcoord,data)
+
+ 
+
+  //  console.log(M + ' ' +m)
+
+var vis = svg,
+    WIDTH = w,
+    HEIGHT = h,
+    MARGINS = {
+      top: 20,
+      right: 20,
+      bottom: 20,
+      left: 50
+    },
+    xRange = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([mx,Mx]),
+    yRange = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([my, My]),
+    xAxis = d3.svg.axis()
+      .scale(xRange)
+      .tickSize(5)
+      .tickSubdivide(true),
+    yAxis = d3.svg.axis()
+      .scale(yRange)
+      .tickSize(5)
+      .orient('left')
+      .tickSubdivide(true);
+ 
+vis.append('svg:g')
+  .attr('class', 'x axis')
+  .attr("class", "my_axis")
+  .attr('transform', 'translate(0,' + (HEIGHT - MARGINS.bottom) + ')')
+  .call(xAxis);
+ 
+vis.append('svg:g')
+  .attr('class', 'y axis')
+  .attr("class", "my_axis")
+  .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
+  .call(yAxis);
+
+var lineFunc = d3.svg.line()
+  .x(function(d) {
+    return xRange(d.x);
+  })
+  .y(function(d) {
+    return yRange(d.y);
+  })
+  .interpolate('linear');
+
+
+for  (var i=0;i<lines.length;i++){
+
+    
+    vis.append('svg:path')
+      .attr('d', lineFunc(lines[i]))
+      .attr('stroke', 'blue')
+      .attr('stroke-width', 2)
+      .attr('fill', 'none');
+
+    }
+}
 
 function handle_nan(value){
 
@@ -123,7 +243,7 @@ function prep_url(varname){
 
 
 
-function pcolor(svg,data, ycoord_edges,xcoord_edges,m,M,wcb,xax,yax){
+function pcolor(svg,data, ycoord_edges,xcoord_edges,m,M,num_cont,wcb,xax,yax){
 
     var w=svg.attr("width")
     var h=svg.attr("height")
@@ -138,7 +258,8 @@ function pcolor(svg,data, ycoord_edges,xcoord_edges,m,M,wcb,xax,yax){
 
     x=d3.scale.linear().range([0,w]).domain([0,data[0].length]),
     y=d3.scale.linear().range([0,h]).domain([0,data.length]),
-    colours = make_cmap('standard',m,M);
+    
+    colours = make_cmap('standard',m,M,num_cont);
      
     var size_y = data.length,
         size_x = data[0].length
@@ -199,7 +320,9 @@ function pcolor(svg,data, ycoord_edges,xcoord_edges,m,M,wcb,xax,yax){
 
 
 
-    svg =colorbar(svg,m,M,30, wcb,padding)
+    if (wcb > 0){
+        svg =colorbar(svg,m,M,30, wcb,padding);
+    }
 
     return svg    
 }
@@ -208,15 +331,21 @@ function colorbar(svg,m,M,boxes,wcb,padding){
 
     
     var w=svg.attr("width"),   
-        h=svg.attr("height") - 2*padding,
+        h=svg.attr("height"),
         bh = h/boxes,
-        cstep = (M-m)/boxes,
-        zs = d3.range(m,M,cstep),
+//        cstep = (M-m)/boxes,
+//        zs = d3.range(m,M,cstep),
+        zs=cont2str(find_conts(m,M,boxes),1),
         from_fig = 5,
         from_bar =3,
         portion = 0.4,
         yticks = 6,
+        axpos=w-padding,
         modulus = Math.round(boxes/yticks)
+
+    var yScale=d3.scale.ordinal()
+                  .domain(d3.range(zs.length)  )
+                  .rangeRoundBands([h-padding,padding],0.01);
 
 // 0.6 portion for text
     var cbar = svg.append("g")
@@ -226,11 +355,22 @@ function colorbar(svg,m,M,boxes,wcb,padding){
        .enter()
        .append("rect")
        .attr("x", w-wcb-padding + from_fig)
-       .attr("y", function(d,i){return h+padding - i*bh})
+       .attr("y", function(d,i){return yScale(i)})
        .attr("width",portion*wcb)
-       .attr("height",bh)
+       .attr("height",yScale.rangeBand())
        .attr("fill", function(d){return colours(d)})
 
+  //      var yAxis = d3.svg.axis()
+ //                     .scale(yScale)
+ //                     .orient("right");
+
+ //       svg.append("g")
+ //          .attr("class", "my_axis")
+ //          .attr("transform", "translate(" + axpos + ",0)")
+ //          .call(yAxis);      
+
+       
+    
     var labels = svg.append("g")
        .attr("class", "my_colorbar")
        .selectAll("text")
@@ -238,10 +378,10 @@ function colorbar(svg,m,M,boxes,wcb,padding){
        .enter()
        .append("text")
        .text(function(d,i){
-            if (i%modulus == 0){return d.toFixed(2)} return ''
+            if (i%modulus == 0){return d} return ''
        })
        .attr("x", w -(1-portion)*wcb -padding + from_fig +from_bar)
-       .attr("y", function(d,i){return h+padding - i*bh})
+       .attr("y", function(d,i){return yScale(i)})
        
     return svg
     
@@ -249,7 +389,7 @@ function colorbar(svg,m,M,boxes,wcb,padding){
 
 
 
-function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts ){
+function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts, labels ){
  
      // d3 employs chain syntax. Example: d3.select("body").append("p").text("New paragraph!");
 
@@ -274,35 +414,27 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
     var h=svg.attr("height")
     
     // initialize Conrec object with specific data
-    var c = new Conrec(),
-      
-        xs = d3.range(0, data[0].length),
-        ys = d3.range(0, data.length),
-        cont_step,
-        zs
-     
+    var c = new Conrec()
+    
 
     if ( conts == false){
-        cont_step = (M-m)/num_cont;
-        zs = d3.range(m , M , cont_step);       
+        var zs = cont2str(find_conts(m,M,num_cont),1)
+     //   cont_step = (M-m)/num_cont;
+     //   zs = d3.range(m , M , cont_step);       
     }else{
-        zs = conts;
+        var zs = conts;
     }
-
-    x=d3.scale.linear().range([0,w]).domain([0,data[0].length]),
-    y=d3.scale.linear().range([0,h]).domain([0,data.length]);
-
 
     var size_y = data.length,
         size_x = data[0].length;
 
    
-    var padding = 30,
+    var padding = 30
   
 
 //        x=d3.scale.linear().range([0,w] ).domain([xcoord[0], xcoord[xcoord.length-1]]),
 //        y=d3.scale.linear().range([0,h]).domain( [ycoord[0], ycoord[ycoord.length-1]]),
-        colours = make_cmap('standard',zs[0],zs[zs.length-1]);
+//        colours = make_cmap('standard',zs[0],zs[zs.length-1]);
 
 
 
@@ -324,41 +456,37 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
             
     // nesting the c.contourList() according to level and feed as data to d3
 
-    function labels(d,i){
-
-        var ret_val;
-
-        if ( i%4 == 0){
-            ret_val = d.level.toFixed(2)
-            console.log(d.x)
-        }
-        else{
-            ret_val = ''       
-
-        }
-        return ret_val
-
-    }
-
     nested = d3.nest().key(function(d) { return d.level}).entries(c.contourList())
 
 //    lblnested = d3.nest().key(function(d) { return d.level}).entries(c.contourList())
 
     var lbpos = [],
         cont_i1 = 0,
-        cont_i2 = 0;
+        lbl;
+    //    cont_i2 = 0;
 
     for (var i=0;i<nested.length;i++){
-        cont_i1 = Math.round(nested[i].values[0].length/4)
-        cont_i2 = Math.round(nested[i].values[0].length*3/4)
+        for (var j=0;j<nested[i].values.length;j++){
+            cont_i1 =  Math.floor((nested[i].values[j].length)*Math.random() )
+    //        cont_i2 = Math.round(nested[i].values[j].length*3/4)
 
-        lbpos.push( [nested[i].values[0][cont_i1].x,nested[i].values[0][cont_i1].y,  parseFloat(nested[i].key ).toFixed(1)    ]  )
+            lbl = parseFloat(nested[i].key )
+            if (lbl == Math.round(lbl)){
+                lbl=lbl.toFixed(0)
 
-        lbpos.push( [nested[i].values[0][cont_i2].x,nested[i].values[0][cont_i2].y,  parseFloat(nested[i].key ).toFixed(1)    ]  )
+            }else{
+                lbl=lbl.toFixed(1)
+            }
 
+            lbpos.push( [nested[i].values[j][cont_i1].x,nested[i].values[j][cont_i1].y,  lbl    ]  )
+
+         //   lbpos.push( [nested[i].values[j][cont_i2].x,nested[i].values[j][cont_i2].y,  parseFloat(nested[i].key ).toFixed(1)    ]  )
+        }
      //   console.log(nested[i].key)
     }
-
+    
+   
+    
     var contplot = svg.append("g")
         .attr("class","my_contplot")
         .selectAll("g")
@@ -384,22 +512,29 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
                         .y(function(d) { return yScale(d.y)})
                         )
 
+    svg.append("ClipPath")
+        .attr("id", "p-area")
+        .append("rect")
+        .attr("x",padding)
+        .attr("y",padding)
+        .attr("w", w-padding-wcb)
+        .attr("height",h-padding)
 
-
-
-    var clabels = contplot.append("g")
+    if (labels){
+        var clabels = svg.append("g")
                 .attr("class","my_clabel")
+                .attr("clip-path","url(#p-area)")
                 .selectAll("text")
                 .data(lbpos) // note function in data method
                 .enter()          
                 .append("text")
                
-       .text(function(d,i){
-            return d[2] })
-       .attr("x", function(d) { return xScale( d[0]  )} )
-       .attr("y", function(d) { return yScale(d[1])} )
+                .text(function(d,i){
+                  return d[2] })
+                .attr("x", function(d) { return xScale( d[0]  )} )
+                .attr("y", function(d) { return yScale(d[1])} )
 
-    
+    }
 
 
 
@@ -434,17 +569,83 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
 
 }
 
+function ordermag(val){
+    var exp=Math.round(Math.log(Math.abs(val))/Math.LN10-2),
+        sign = val/Math.abs(val)
+
+    return [Math.abs(val)/Math.pow(10, exp ), exp, sign]
+}
+
+function toOrdermag(val,ord){
+
+    return Math.round(val/Math.pow(10,ord))*Math.pow(10,ord)
+}
+
+function cont2str(conts,decs){
+
+    var lbl=0,
+        strconts=[];
+
+    for (i=0;i<conts.length;i++){
+        lbl = parseFloat(conts[i]);
+        if (lbl == Math.round(lbl)){
+            lbl=lbl.toFixed(0)
+
+        }else{
+            lbl=lbl.toFixed(decs)
+        }
+        strconts.push(lbl)
+    }
+    return strconts
+
+}
+            
+function find_conts(m,M,num_cont){            
+  //      cont_step = (M-m)/num_cont;
+        
+        var om=ordermag(M-m)
+
+        var dMM=om[0],
+            omag=om[1],
+            mm=toOrdermag(m,omag),
+            MM=toOrdermag(M,omag),
+
+            cont_step=Math.round( (MM-mm)/num_cont )
+
+    //    console.log('ya ' + mm + '.. ' + dMM + '.. ' + cont_step)
+            
+        return d3.range(mm,MM,cont_step)
+
+
+}
 
 
 cmaps = {standard:['#000099','#0000FF','#3399FF','#00CCFF','#00CC00','#66FF00','#FFFF00','#CC0000','#FF6633'], BWR:['blue','white','red']}
 
-function make_cmap(map_name,m,M){
+function make_cmap(map_name,m,M,num_cont){
 
-    var cmap = cmaps[map_name],
-        step = (M - m)/ (cmap.length - 1),
-        zs_set = d3.range(m,M ,step);
+    if (num_cont==0){
+        var cmap = cmaps[map_name],
+            step = (M - m)/ (cmap.length - 1),
+            zs_set = d3.range(m,M ,step);
 
-    return d3.scale.linear().domain(zs_set).range(cmap);
+        return d3.scale.linear().domain(zs_set).range(cmap);
+    }
+    else{
+        var linmap=make_cmap(map_name,m,M,0),
+            zs_set=find_conts(m,M,num_cont),
+            imzs=[];
+
+        
+        for (var i=0;i<zs_set.length;i++){
+
+            imzs.push(linmap(zs_set[i]))
+        }
+
+        return d3.scale.quantize().domain([m,M]).range(imzs);
+    }
+
+
 };
  
 
@@ -513,7 +714,7 @@ function make_grid(data, maxX, minX, maxY, minY, spacingX, spacingY){
 
 function make_cliff(grid){
 
-    var cliff = -100;
+    var cliff = -400;
     grid.push(d3.range(grid[0].length).map(function() { return cliff; }));
     grid.unshift(d3.range(grid[0].length).map(function() { return cliff; }));
     grid.forEach(function(nd) {

@@ -70,6 +70,7 @@ def index(request):
 
   context = RequestContext(request)
  
+ 
   return render_to_response('sgdata/index.html', context)
 
   return HttpResponse('test')
@@ -86,10 +87,22 @@ def ret_field_op(request, project,exp, field, op):
 
   context = RequestContext(request)
 
+  
+
   fld = get_field(project,exp, field)
   fld = getattr(sg,op)(fld)
   msg = make_json(fld)
   return HttpResponse(msg)
+
+def ret_field_method(request, project,exp, field, method):
+
+  context = RequestContext(request)
+
+  fld = get_field(project,exp, field)
+  fld = getattr(field,method)(args)
+  msg = make_json(fld)
+  return HttpResponse(msg)
+
 
 
 def gmaps(request):
