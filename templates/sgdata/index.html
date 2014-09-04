@@ -7,12 +7,16 @@
         
         <meta charset="utf-8" name="viewport" content="initial-scale=1.0, user-scalable=no"/>
         
-        
-  
-        <script src="{% static "js/d3.v3.js" %}">  </script>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+ <script type="text/javascript" src="https://raw.github.com/jasondavies/conrec.js/master/conrec.js"></script>
+	<script src="https://raw.github.com/d3/d3-plugins/master/geom/contour/contour.js"></script>
+ 
+
+     <!--   <script src="{% static "js/d3.v3.js" %}">  </script> 
         <script src="{% static "js/conrec.js" %}">  </script>
-        <script src="{% static "js/contour.js" %}">  </script>
+        <script src="{% static "js/contour.js" %}">  </script> -->
         <script src="{% static "js/jquery-2.1.1.min.js" %}">  </script>
+
         <style type="text/css">
             h1 {
             	font-family: sans-serif;
@@ -42,14 +46,19 @@
                 font-family: sans-serif;
                 font-size: 11px;
             }
-            
+      
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}      
         </style>
 
         <title>This is my page</title>
     
     </head>
     <body>
-        <h1>This is my page </h1>
+        <h1>Data </h1>
    
         <button type="button" id="suggestion">Get the data</button>
 
@@ -61,7 +70,9 @@
         <script type="text/javascript">
             $('#suggestion').click(function(){
   //              d3.json(prep_url('G_kmt/finer_field'),
-                d3.json(prep_url('A_sat'),
+  //              d3.json(prep_url('A_sat'),
+                d3.json(prep_url('A_sat/method/mean/?args=X'),
+
                 function(data){
 
       //              console.log(data)
@@ -94,13 +105,15 @@
 
     //        svg = plot_contour(svg,d3.transpose(value),ycoord,xcoord,m,M,12,wcb, false, false, false, true);
 
-             
-
-              plot(svg,[[1,16,3,4,1],[5,3,5,4]  ] ,[[0,1,2,3,4],[0,2,3,4] ])
+           
+              plot(svg,data.value, ycoord)
 
 
               })
             });
+
+
+
 
 function plot(svg,data, xcoord){
     // expects data to be either an array of numbers
@@ -214,13 +227,136 @@ for  (var i=0;i<lines.length;i++){
 
     
     vis.append('svg:path')
+      .attr('class', 'line')
       .attr('d', lineFunc(lines[i]))
-      .attr('stroke', 'blue')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none');
-
+   
     }
 }
+
+
+
+
+
+
+
+
+
+function plot2(svg,data, xcoord){
+
+
+    // expects data to be either an array of numbers
+    // or an array of such arrays (multiple curves)
+
+    if (data[0].length == undefined){
+        data=[data];
+        xcoord=[xcoord];
+    }
+
+
+
+
+    var lineData = [],
+        lines = [],
+        xc,
+        yc     
+ 
+    for (var j=0;j<data.length;j++){
+        lineData = []
+        xc=xcoord[j]
+        yc=data[j]
+        for (var i=0;i<yc.length;i++){
+            
+            lineData.push({x:xc[i],y:yc[i]})
+        lines.push(lineData)
+
+        }
+    }
+
+
+    var w=svg.attr("width")
+    var h=svg.attr("height")
+ 
+var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width = w - margin.left - margin.right,
+    height = h - margin.top - margin.bottom;
+
+var x = d3.scale.linear()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+
+
+var line = d3.svg.line()
+    .x(function(d) { return x(d.x); })
+    .y(function(d) { return y(d.y); });
+
+var linesvg = svg.append("g")
+    
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.tsv("data.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d.close = +d.close;
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.x; }));
+  y.domain(d3.extent(data, function(d) { return d.y; }));
+
+  linesvg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  linesvg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Price ($)");
+
+// this loop needs to go into the d3.tsv above
+  for  (var i=0;i<lines.length;i++){
+
+    linesvg.append("path")
+        .datum(lines[i])
+        .attr("class", "line")
+        .attr("d", line);
+
+}
+
+});
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function handle_nan(value){
 
