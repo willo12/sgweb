@@ -78,12 +78,31 @@ def interpret(comstr,knownobs,obchain=[]):
 
 
 
-def prepare_hor_field(F):
+def find_mirror(fld):
   """Prepare field for orientation appropriate for client-side contour function.
   """
 #  F.value = np.flipud(F.value)
-  return F.transpose()
 
+  grid = fld.grid
+  if hasattr(grid[0],'axis'):
+    if grid[0].axis.name == 'Z':
+      fld=grid[0].flip(fld)
+
+#      fld.grid[0].value = -fld.grid[0].value 
+ #     fld.grid[0].dual.value = -fld.grid[0].dual.value 
+
+      yscale=1e-3
+      fld.grid[0].value = yscale*np.flipud(fld.grid[0].value )
+      fld.grid[0].dual.value = yscale*np.flipud(fld.grid[0].dual.value )
+
+#      fld.grid[0].dual.value = np.concatenate([np.array([fld.grid[0].dual.value[0],]), fld.grid[0].dual.value])
+
+
+    elif grid[1].axis.name == 'Z':
+      fld=grid[1].flip(fld)
+
+
+  return fld
 
 
 def make_json(fld):
@@ -92,15 +111,18 @@ def make_json(fld):
   m = np.nanmin(fld.value)
 
   ndim = fld.value.ndim 
+  fld = find_mirror(fld)
 
   fld.value[np.isnan(fld.value)] = -999.
 
-  msg = {'name':fld.name,'value':fld.value.tolist() ,'M':str(M),'m':str(m) , 'ndim':ndim }
+  msg = {'name':fld.name,'lname':fld.long_name,'value':fld.value.tolist() ,'M':str(M),'m':str(m) , 'ndim':ndim, 'units':fld.units }
 
   for i,coord in enumerate(fld.grid):
     msg['coord'+str(i)] = fld.grid[i].value.tolist()
     msg['coord'+str(i)+'_edges'] = fld.grid[i].dual.value.tolist()
-
+    msg['coord'+str(i)+'_lname'] = fld.grid[i].long_name
+    msg['coord'+str(i)+'_units'] = fld.grid[i].units
+    msg['coord'+str(i)+'_axis'] = fld.grid[i].axis.name
 
   return dumps(msg)
   
