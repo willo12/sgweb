@@ -19,14 +19,14 @@ def interpret(comstr,knownobs,obchain=[]):
     if '*' in comstr:
       mults = comstr.split('*')
       
-      return reduce(lambda x,y:interpret(x,knownobs,obchain=[])[-1]*interpret(y,knownobs,obchain=[])[-1], mults )
+      return [reduce(lambda x,y:interpret(x,knownobs,obchain=[])[-1]*interpret(y,knownobs,obchain=[])[-1], mults )]
     
 
     if '__' in comstr:
     
       chain = [interpret(e, knownobs,obchain=[])[-1] for e in comstr.split('__') ]
   
-      return reduce( lambda x,y:x[y], chain  )
+      return [reduce( lambda x,y:x[y], chain)]
 
 
    # print comstr          
@@ -200,14 +200,7 @@ def ret_field_method(request, project,exp, field, method):
 
   comstr = request.GET['args']
 
-
-
-
-
-
   fld, P, E = get_field(project,exp, field)
-
-
 
   knownobs = {'P':P,'E':E}
 
@@ -220,9 +213,9 @@ def ret_field_method(request, project,exp, field, method):
     knownobs[a.name] = a
 
 
-  args = interpret(comstr,knownobs,obchain=[] )[0]
+  args = interpret(comstr,knownobs,obchain=[] )[-1]
 
-#  print args
+  print args
 
   fld = getattr(fld,method)(args)
   msg = make_json(fld)

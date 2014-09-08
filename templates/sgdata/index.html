@@ -6,15 +6,16 @@
     <head>
         
         <meta charset="utf-8" name="viewport" content="initial-scale=1.0, user-scalable=no"/>
-        
+  
+  <!--      
         <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
  <script type="text/javascript" src="https://raw.github.com/jasondavies/conrec.js/master/conrec.js"></script>
 	<script src="https://raw.github.com/d3/d3-plugins/master/geom/contour/contour.js"></script>
- 
+ -->
 
-     <!--   <script src="{% static "js/d3.v3.js" %}">  </script> 
+        <script src="{% static "js/d3.v3.min.js" %}">  </script> 
         <script src="{% static "js/conrec.js" %}">  </script>
-        <script src="{% static "js/contour.js" %}">  </script> -->
+        <script src="{% static "js/contour.js" %}">  </script> 
         <script src="{% static "js/jquery-2.1.1.min.js" %}">  </script>
 
         <style type="text/css">
@@ -66,71 +67,171 @@
     <body>
         <h1>Data </h1>
    
-        <button type="button" id="suggestion">Get the data</button>
-
-        <div id="cats"> my data here 
-        </div>
  
-        
-        
+    
         <script type="text/javascript">
-            $('#suggestion').click(function(){
-  //              d3.json(prep_url('G_kmt/finer_field'),
-                d3.json(prep_url('F_outlwr'),
 
-  //              d3.json(prep_url('A_sat/method/mean/?args=X'),
-
-   //           d3.json(prep_url('O_temp/method/mean/?args=X'),
-
-                function(data){
-      // processing the 2D case
-      //              console.log(data)
-                    var units = data.units,
-                        title = data.lname,
-                        
-                        ycoord = data.coord0,
-                        xcoord = data.coord1,
-                        ycoord_edges = data.coord0_edges,
-                        xcoord_edges = data.coord1_edges,                        
-                        ylabel = data.coord0_lname,
-                        xlabel = data.coord1_lname,    
-
-                        m = data.m,
-                        M = data.M;
-//console.log(ycoord)
-                    var value = handle_nan(data.value);
- 
                     var w=500,
                         h=300,
-                        wcb=50;
-              
-         //           var M = d3.max(d3.max(value)),
-         //               m = d3.min(d3.min(value));
+                        wcb=50,
+                        padding=40;
 
+                      
+                    var div=d3.select("body")
+                              .append("div")
+                              .attr("id","yo")
+                    var svg=div.append("svg")
+                                  .attr("width",w)
+                                  .attr("height",h)
+                                  .attr("id","yo_svg")
+                    div.append("button")
+                       .attr("id","but1")
+                    .text("data")
+                    .on("click",function(d){url=prep_url('A_sat');d3.json(url,function(data){handle_data(div,data,url)})})
+
+
+
+
+
+function handle_more_data(axob,data){
+
+    data.value = handle_nan(data.value);
+    data.lname =''
+
+
+    var w=svg.attr("width")
+    var h=svg.attr("height")
+ 
+    var wcb=50,
+        padding=40;
+     
+    return plot_contour(axob.svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
+}
+
+function handle_data(div,data,url){
     
-                    console.log('M ' + M + '  m ' + m)
-        //            var value = make_cliff(data.value)
-                    
-                    var svg=d3.select("body").append("svg")
-                              .attr("width",w)
-                              .attr("height",h)
+    svg=div.selectAll("svg")
+    data.value = handle_nan(data.value);
+    
+    var w=svg.attr("width")
+    var h=svg.attr("height")
+ 
+    var wcb=50,
+    padding=40;
 
-        //
-            svg=pcolor(svg,value, ycoord_edges,xcoord_edges,m,M,24,wcb,true,true,units,xlabel,ylabel,title,-1)
+    // calculate scales
+    axob=prep_axes(svg, data,padding,wcb,true,true,-1)
 
-    //        svg = plot_contour(svg,d3.transpose(value),ycoord,xcoord,m,M,12,wcb, false, false, false, true);
-
-           
-    //          plot(svg,data.value, ycoord)
+    elms=my_plot(axob,data)
 
 
-              })
+
+// element w=handle_more_data(axob,data) is removed again with w.remove()
+
+addtoggle(axob,data,div,"button",handle_more_data,"on","off")
+
+d3.json(prep_url('G_kmt'),function(data){addtoggle(axob,data,div,"button",my_kmt,"kmt on","kmt off")})
+
+
+d3.json(prep_url('O_psi'),function(data){addtoggle(axob,data,div,"button",handle_more_data,"psi off","psi")})
+
+
+function toggle(w,axob,data,but,func,onms,offms){
+
+    if (w==false){
+        but.text(onms)
+        return func(axob,data);
+    }else{
+        w.remove()
+        but.text(offms)
+        return false
+    }    
+};
+
+function addtoggle(axob,data,div,tag,func,onms,offms){
+
+    var w,
+        but 
+    // data available in namespace
+ //   var offms="contours",
+ //       onms="remove conts";
+    but=div.append(tag)
+    but.attr("id",onms+offms)
+        .text(offms)
+        .on("click",function(d){
+            // need to wrap toggle var w inside here:
+            w=toggle(false,axob,data,but,func,onms,offms)
+            
+            but.on("click",function(d){
+                w=toggle(w,axob,data,but,func,onms,offms)   
             });
+         })
+
+}
+
+    return elms
+
+}
+
+
+
+function my_kmt(axob,data){
+ 
+    data.value = handle_nan(data.value);
+    data.lname =''
+
+
+    var w=axob.svg.attr("width")
+    var h=axob.svg.attr("height")
+ 
+    var wcb=50,
+        padding=40;
+     
+    return plot_contour(axob.svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, [0.5], false);
+};
 
 
 
 
-function plot(svg,data, xcoord){
+
+
+function my_plot(axob,data){
+ 
+    tuples = data2rectangles(data,axob.xScale,axob.yScale)
+
+    var pclr=pcolor(axob.svg,tuples,data.m,data.M,24)
+
+     //       svg = plot_contour(svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
+
+    axob.svg.append("ClipPath")
+        .attr("id", "p-area")
+        .append("rect")
+        .attr("x",axob.padding)
+        .attr("y",axob.padding)
+        .attr("w", w-axob.padding-axob.wcb)
+        .attr("height",h-axob.padding)
+
+    var cbar=colorbar(axob.svg,data.m,data.M,30, axob.wcb,axob.padding,data.units,colours);
+
+        
+
+    //          plot(svg,data.value, ycoord,true,true,units,xlabel,ylabel,title,-1)
+
+    return [pclr,cbar]             
+};
+
+
+
+
+
+        </script>
+
+        
+<script type="text/javascript">
+ 
+
+
+function plot(svg,data, xcoord,xax,yax,units,xlabel,ylabel,title,i){
     // expects data to be either an array of numbers
     // or an array of such arrays (multiple curves)
 
@@ -227,7 +328,7 @@ vis.append("g")
       .attr("x", -26)
       .attr("dy", ".71em")
       .style("text-anchor", "end")
-      .text("y label");
+      .text(ylabel);
 
 vis.append("g")
   .attr("class", "my_flabel")
@@ -237,11 +338,12 @@ vis.append("g")
       .attr("text-anchor", "end")
       .attr("x", WIDTH- MARGINS.right)
       .attr("y", HEIGHT )
-      .text("x ax");
+      .text(xlabel);
 
 
+ // line plotting
 
-
+// function used to draw lines
 var lineFunc = d3.svg.line()
   .x(function(d) {
     return xRange(d.x);
@@ -251,9 +353,8 @@ var lineFunc = d3.svg.line()
   })
   .interpolate('linear');
 
-
+// plot one or more lines, using lineFunc
 for  (var i=0;i<lines.length;i++){
-
     
     vis.append('svg:path')
       .attr('class', 'line')
@@ -404,19 +505,29 @@ function prep_url(varname){
 }
 
 
+//svg, data.coord0_edges,data.coord1_edges,data.m,data.M,padding,wcb,true,true,data.units,data.coord1_lname,data.coord0_lname,data.lname,-1
 
-function pcolor(svg,data, ycoord_edges,xcoord_edges,m,M,num_cont,wcb,xax,yax,units,xlabel,ylabel,title,i){
+function prep_axes(svg, data,padding,wcb,xax,yax,i){
+
+
+    var ycoord_edges=data.coord0_edges,
+        xcoord_edges=data.coord1_edges,
+        m=data.m,
+        M=data.M,
+        units=data.units,
+        xlabel=data.coord1_lname,    
+        ylabel=data.coord0_lname,
+        title=data.lname;
 
     var w=svg.attr("width"),
-        h=svg.attr("height"),
-        padding=40;
-
+        h=svg.attr("height");
+        
 if (i >-1){
     title =  ' ('+String.fromCharCode(97+i) +') '+title
 
 }
 
-svg.append("g")
+hylabel=svg.append("g")
   .attr("class", "my_flabel")
       .append("text")
       .attr("class", "y label")
@@ -427,7 +538,7 @@ svg.append("g")
       .style("text-anchor", "end")
       .text(ylabel);
 
-svg.append("g")
+hxlabel=svg.append("g")
   .attr("class", "my_flabel")
 .append("text")
       .attr("class", "x label")
@@ -437,7 +548,7 @@ svg.append("g")
       .attr("y", h-6 )
       .text(xlabel);
 
-svg.append("g")
+htitle=svg.append("g")
   .attr("class", "my_flabel")
 .append("text")
 //      .attr("class", "x label")
@@ -451,18 +562,10 @@ svg.append("g")
 
     // contains array of (y,x,dy,dx,value)
 
-    xs = d3.range(0, data[0].length),
-    ys = d3.range(0, data.length),
- 
-    x=d3.scale.linear().range([0,w]).domain([0,data[0].length]),
-    y=d3.scale.linear().range([0,h]).domain([0,data.length]),
+ //    colours = make_cmap('standard',m,M,num_cont);
 
-
-
-    colours = make_cmap('standard',m,M,num_cont);
-
-    var size_y = data.length,
-        size_x = data[0].length
+    var size_y = ycoord_edges.length-1,
+        size_x = xcoord_edges.length-1
     
     
     var xpadding = 0,
@@ -478,26 +581,6 @@ svg.append("g")
     var yScale = d3.scale.linear()
                          .domain([ycoord_edges[0], ycoord_edges[ycoord_edges.length-1]])
                          .range([h-padding, padding]);                         
-
-    tuples = data2rectangles(data,xcoord_edges,ycoord_edges,xScale,yScale)
-
-
-
- //   var yScaleWidth = d3.scale.linear()
- //                        .domain([ycoord_edges[0], ycoord_edges[ycoord_edges.length-1]])
- //                        .range([-h/2, h/2]);   
-
-    pclr = svg.append("g")
-              .attr("class","my_pcolor")
-              .selectAll("rect").data(tuples)
-                         .enter()
-                         .append("rect")
-                         .attr("x", function(d){return d[1] })
-                         .attr("y", function(d){return d[0] })
-                         .attr("width", function(d){return d[3] })
-                         .attr("height",function(d){return d[2] })
-
-                         .attr("fill", function(d) { return colours(d[4]);});
 
     if (xax){
         var xAxis = d3.svg.axis()
@@ -521,43 +604,73 @@ svg.append("g")
            .call(yAxis);      
     }
 
+    axob={svg:svg,xScale:xScale,yScale:yScale,wcb:wcb,padding:padding,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
 
-
-    if (wcb > 0){
-        svg =colorbar(svg,m,M,30, wcb,padding,units);
-    }
-
-
-
-
-
-
-    return svg    
+    return axob
 }
 
-function colorbar(svg,m,M,boxes,wcb,padding,units){
 
+
+function pcolor(svg,tuples,m,M,num_cont){
+
+
+    colours = make_cmap('standard',m,M,num_cont);
     
+
+ //   var yScaleWidth = d3.scale.linear()
+ //                        .domain([ycoord_edges[0], ycoord_edges[ycoord_edges.length-1]])
+ //                        .range([-h/2, h/2]);   
+
+    // plot the pcolor
+    pclr = svg.append("g")
+              .attr("class","my_pcolor")
+              .selectAll("rect").data(tuples)
+                         .enter()
+                         .append("rect")
+                         .attr("x", function(d){return d[1] })
+                         .attr("y", function(d){return d[0] })
+                         .attr("width", function(d){return d[3] })
+                         .attr("height",function(d){return d[2] })
+
+                         .attr("fill", function(d) { return colours(d[4]);});
+
+
+ 
+
+    return pclr   
+}
+
+function colorbar(svg,m,M,boxes,wcb,padding,units,colours){
+
+    if (wcb==0){
+        return
+    }
+
     var w=svg.attr("width"),   
         h=svg.attr("height"),
         bh = h/boxes,
 //        cstep = (M-m)/boxes,
 //        zs = d3.range(m,M,cstep),
-        zs=cont2str(find_conts(m,M,boxes),1),
+
+        zs=find_conts(m,M,boxes),
+        zs_str=cont2str(zs,1),
         from_fig = 5,
         from_bar =3,
         portion = 0.4,
         yticks = 6,
         axpos=w-padding,
         modulus = Math.round(boxes/yticks)
-
+  
+  
     var yScale=d3.scale.ordinal()
                   .domain(d3.range(zs.length)  )
                   .rangeRoundBands([h-padding,padding],0.01);
 
 // 0.6 portion for text
     var cbar = svg.append("g")
-       .attr("class", "my_colorbar")
+                  .attr("class", "my_colorbar")
+
+    var body=cbar.append("g")       
        .selectAll("rect")
        .data(zs)
        .enter()
@@ -579,20 +692,20 @@ function colorbar(svg,m,M,boxes,wcb,padding,units){
 
        
     
-    var labels = svg.append("g")
+    var labels = cbar.append("g")
        .attr("class", "my_colorbar")
        .selectAll("text")
        .data(zs)
        .enter()
        .append("text")
        .text(function(d,i){
-            if (i%modulus == 0){return d} return ''
+            if (i%modulus == 0){return cont2str([d],1)[0]} return ''
        })
        .attr("x", w -(1-portion)*wcb -padding + from_fig +from_bar)
        .attr("y", function(d,i){return yScale(i)})
 
     if (units !='h'){
-        svg.append("g")
+        cbar.append("g")
           .attr("class", "my_flabel")
               .append("text")
               .attr("class", "y label")
@@ -605,13 +718,13 @@ function colorbar(svg,m,M,boxes,wcb,padding,units){
 }
 
        
-    return svg
+    return cbar
     
 }
 
 
 
-function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts, labels ){
+function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts, labels ){
  
      // d3 employs chain syntax. Example: d3.select("body").append("p").text("New paragraph!");
 
@@ -637,8 +750,7 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
     
     // initialize Conrec object with specific data
     var c = new Conrec()
-    
-
+  
     if ( conts == false){
         var zs = cont2str(find_conts(m,M,num_cont),1)
      //   cont_step = (M-m)/num_cont;
@@ -646,42 +758,15 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
     }else{
         var zs = conts;
     }
-
-    var size_y = data.length,
-        size_x = data[0].length;
-
-   
-    var padding = 30
-  
-
-//        x=d3.scale.linear().range([0,w] ).domain([xcoord[0], xcoord[xcoord.length-1]]),
-//        y=d3.scale.linear().range([0,h]).domain( [ycoord[0], ycoord[ycoord.length-1]]),
-//        colours = make_cmap('standard',zs[0],zs[zs.length-1]);
-
-
-
-    var xScale = d3.scale.linear()
-                         .domain([xcoord[0], xcoord[xcoord.length-1]])
-                         .range([padding, w-padding-wcb]);
-
-    var yScale = d3.scale.linear()
-                         .domain([ycoord[0], ycoord[ycoord.length-1]])
-                         .range([h-padding, padding]);                         
-
-
-
-
+ 
     // call contour method on existing Conrec object
     c.contour(data, 0, xcoord.length-1, 0, ycoord.length-1, xcoord, ycoord, zs.length, zs);
    
-
-            
     // nesting the c.contourList() according to level and feed as data to d3
 
     nested = d3.nest().key(function(d) { return d.level}).entries(c.contourList())
 
-//    lblnested = d3.nest().key(function(d) { return d.level}).entries(c.contourList())
-
+    // created contour labels
     var lbpos = [],
         cont_i1 = 0,
         lbl;
@@ -702,14 +787,12 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
 
             lbpos.push( [nested[i].values[j][cont_i1].x,nested[i].values[j][cont_i1].y,  lbl    ]  )
 
-         //   lbpos.push( [nested[i].values[j][cont_i2].x,nested[i].values[j][cont_i2].y,  parseFloat(nested[i].key ).toFixed(1)    ]  )
         }
-     //   console.log(nested[i].key)
     }
     
-   
+    var allcont = svg.append("g")  
     
-    var contplot = svg.append("g")
+    var contplot = allcont.append("g")
         .attr("class","my_contplot")
         .selectAll("g")
         .data( nested )
@@ -734,16 +817,9 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
                         .y(function(d) { return yScale(d.y)})
                         )
 
-    svg.append("ClipPath")
-        .attr("id", "p-area")
-        .append("rect")
-        .attr("x",padding)
-        .attr("y",padding)
-        .attr("w", w-padding-wcb)
-        .attr("height",h-padding)
 
     if (labels){
-        var clabels = svg.append("g")
+        var clabels = allcont.append("g")
                 .attr("class","my_clabel")
                 .attr("clip-path","url(#p-area)")
                 .selectAll("text")
@@ -758,37 +834,7 @@ function plot_contour(svg,data,ycoord,xcoord,m,M, num_cont, wcb, xax, yax, conts
 
     }
 
-
-
-//                    .attr("text",function(d,i){ labels(d,i) }  )
-
-
-
-
-
-
-    if (xax ){
-        var xAxis = d3.svg.axis()
-                      .scale(xScale)
-                      .orient("bottom");
-
-        svg.append("g")
-           .attr("class", "my_axis")
-           .attr("transform","translate(0," + (h - padding) + ")")
-           .call(xAxis);              
-    }
-
-    if (yax ){
-        var yAxis = d3.svg.axis()
-                      .scale(yScale)
-                      .orient("left");
-
-        svg.append("g")
-           .attr("class", "my_axis")
-           .attr("transform", "translate(" + padding + ",0)")
-           .call(yAxis);      
-    }
-
+    return allcont
 }
 
 function ordermag(val){
@@ -832,6 +878,8 @@ function find_conts(m,M,num_cont){
 
         if (om[1] == -2){
             var cont_step=(M-m)/num_cont
+
+    //        console.log(d3.range(m,M,cont_step))
             return d3.range(m,M,cont_step)
         }
 
@@ -856,12 +904,12 @@ function find_conts(m,M,num_cont){
 cmaps = {standard:['#000099','#0000FF','#3399FF','#00CCFF','#00CC00','#66FF00','#FFFF00','#CC0000','#FF6633'], BWR:['blue','white','red']}
 
 function make_cmap(map_name,m,M,num_cont){
-
+    
     if (num_cont==0){
         var cmap = cmaps[map_name],
             step = (M - m)/ (cmap.length - 1),
             zs_set = d3.range(m,M ,step);
-
+      
         return d3.scale.linear().domain(zs_set).range(cmap);
     }
     else{
@@ -877,7 +925,7 @@ function make_cmap(map_name,m,M,num_cont){
 
             imzs.push(linmap(zs_set[i]))
         }
-
+        
         return d3.scale.quantize().domain([m,M]).range(imzs);
     }
 
@@ -978,16 +1026,21 @@ function data2xyvalue(data,xcoord,ycoord){
 return new_data;
 }
 
-function data2rectangles(data,xcoord_edges,ycoord_edges,xScale,yScale){
+function data2rectangles(data,xScale,yScale){
     // Returns a 2D grid as one array of 5-tuples of (y,x,dy,dx,value) 
     // to be used to draw rectangles, with x,y the upper left corner and dy,dx the widths.
 
+
+    var ycoord_edges=data.coord0_edges,
+        xcoord_edges=data.coord1_edges;
+     
+
     new_data = []
-    for (var j=0;j<data.length;j++){
+    for (var j=0;j<data.value.length;j++){
                         
-        var row = data[j];
+        var row = data.value[j];
         for (var i=0;i<row.length;i++){
-            var new_item = [yScale(ycoord_edges[j+1]),xScale(xcoord_edges[i]),Math.ceil(yScale(ycoord_edges[j])-yScale(ycoord_edges[j+1])+0.0),Math.ceil(xScale(xcoord_edges[j+1])-xScale(xcoord_edges[j]) +0.0 ),row[i]]
+            var new_item = [yScale(ycoord_edges[j+1]),xScale(xcoord_edges[i]),Math.ceil(yScale(ycoord_edges[j])-yScale(ycoord_edges[j+1])+0.2),Math.ceil(xScale(xcoord_edges[j+1])-xScale(xcoord_edges[j]) +0.2 ),row[i]]
 
             new_data.push(new_item)
         }
