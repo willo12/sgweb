@@ -87,9 +87,9 @@
                     div.append("button")
                        .attr("id","but1")
                     .text("data")
-                    .on("click",function(d){url=prep_url('A_sat');d3.json(url,function(data){handle_data(div,data,url)})})
+    //                .on("click",function(d){url=prep_url('A_sat');d3.json(url,function(data){handle_data(div,data,url)})})
 
-
+                    .on("click",function(d){url=prep_url('O_temp/ops/?ops=MeanX');d3.json(url,function(data){handle_data(div,data,url)})})
 
 
 
@@ -128,12 +128,18 @@ function handle_data(div,data,url){
 
 // element w=handle_more_data(axob,data) is removed again with w.remove()
 
-addtoggle(axob,data,div,"button",handle_more_data,"on","off")
+addtoggle(axob,data,div,"button",handle_more_data,"conts off","conts")
 
-d3.json(prep_url('G_kmt'),function(data){addtoggle(axob,data,div,"button",my_kmt,"kmt on","kmt off")})
+d3.json(prep_url('G_kmt'),function(data){addtoggle(axob,data,div,"button",my_kmt,"geog off","geography")})
 
 
 d3.json(prep_url('O_psi'),function(data){addtoggle(axob,data,div,"button",handle_more_data,"psi off","psi")})
+
+
+    return elms
+
+}
+
 
 
 function toggle(w,axob,data,but,func,onms,offms){
@@ -169,14 +175,11 @@ function addtoggle(axob,data,div,tag,func,onms,offms){
 
 }
 
-    return elms
-
-}
 
 
 
 function my_kmt(axob,data){
- 
+
     data.value = handle_nan(data.value);
     data.lname =''
 
@@ -489,7 +492,7 @@ function handle_nan(value){
     for (i=0;i<value.length;i++){
         row=value[i]
         for (j=0;j<row.length;j++){
-            if (row[j] < -900.0){
+            if (row[j] < -8e20){
    
    // this needs to be some other value for d3.max and d3.min to work.
                 row[j] = NaN
@@ -652,7 +655,8 @@ function colorbar(svg,m,M,boxes,wcb,padding,units,colours){
 //        cstep = (M-m)/boxes,
 //        zs = d3.range(m,M,cstep),
 
-        zs=find_conts(m,M,boxes),
+        contl=find_conts(m,M,boxes)
+        zs=contl.range,
         zs_str=cont2str(zs,1),
         from_fig = 5,
         from_bar =3,
@@ -699,7 +703,7 @@ function colorbar(svg,m,M,boxes,wcb,padding,units,colours){
        .enter()
        .append("text")
        .text(function(d,i){
-            if (i%modulus == 0){return cont2str([d],1)[0]} return ''
+            if (i%modulus == 0){return cont2str([contl.om*d],1)[0]} return ''
        })
        .attr("x", w -(1-portion)*wcb -padding + from_fig +from_bar)
        .attr("y", function(d,i){return yScale(i)})
@@ -749,14 +753,22 @@ function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts,
     var h=svg.attr("height")
     
     // initialize Conrec object with specific data
-    var c = new Conrec()
-  
+    var c = new Conrec(),
+        zs,
+        om
+    
     if ( conts == false){
-        var zs = cont2str(find_conts(m,M,num_cont),1)
+        contl=find_conts(m,M,num_cont)
+        console.log(contl.om)
+        zs=cont2str(contl.range,1)
+        om=contl.om
+
      //   cont_step = (M-m)/num_cont;
      //   zs = d3.range(m , M , cont_step);       
     }else{
-        var zs = conts;
+     
+        zs=conts;
+        om=1.
     }
  
     // call contour method on existing Conrec object
@@ -772,12 +784,13 @@ function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts,
         lbl;
     //    cont_i2 = 0;
 
+    
     for (var i=0;i<nested.length;i++){
         for (var j=0;j<nested[i].values.length;j++){
             cont_i1 =  Math.floor((nested[i].values[j].length)*Math.random() )
     //        cont_i2 = Math.round(nested[i].values[j].length*3/4)
 
-            lbl = parseFloat(nested[i].key )
+            lbl = om*parseFloat(nested[i].key )
             if (lbl == Math.round(lbl)){
                 lbl=lbl.toFixed(0)
 
@@ -874,7 +887,8 @@ function find_conts(m,M,num_cont){
   
   // finds convenient as round as possible contour values
       
-        var om=ordermag(M-m)
+        var om=ordermag(M-m),
+            retom
 
         if (om[1] == -2){
             var cont_step=(M-m)/num_cont
@@ -888,14 +902,25 @@ function find_conts(m,M,num_cont){
             mm=toOrdermag(m,omag),
             MM=toOrdermag(M,omag),
 
-            cont_step=Math.max(Math.round( (MM-mm)/num_cont ),0.2)
+     //       cont_step=toOrdermag(Math.round( (MM-mm)/num_cont ),omag)
+
+           cont_step=toOrdermag(Math.round( (MM-mm)/num_cont ),omag)
 
     //        cont_step=toOrdermag( (M-m)/num_cont ,om)
 
-        console.log('omag '+omag + 'num_cont: ' + num_cont)
-        console.log('ya ' + mm + '.. ' + dMM + ' .. '+MM + '.. ' + cont_step)
+        console.log('omag '+omag + '  num_cont: ' + num_cont)
+//        console.log('baba ' + mm + '.. ' + dMM + ' .. '+MM + '.. ' + cont_step)
+//        console.log('yaga ' + Math.floor(mm) + '.. ' + dMM + ' .. '+Math.ceil(MM) + '.. ' + cont_step)
+
+        if (omag >2 || omag<-2){
             
-        return d3.range(Math.floor(mm),Math.ceil(MM),cont_step)
+            retom=Math.pow(10,-omag)
+        }else{
+            retom=1. 
+        }
+
+            
+        return {range:d3.range(Math.floor(mm),Math.ceil(MM),cont_step) , om:retom}
 
 
 }
@@ -917,7 +942,7 @@ function make_cmap(map_name,m,M,num_cont){
 
         var linmap=make_cmap(map_name,m,M,0);
     
-        var    zs_set=find_conts(m,M,num_cont),
+        var    zs_set=find_conts(m,M,num_cont).range,
             imzs=[];
 
         

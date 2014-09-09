@@ -8,6 +8,16 @@ import spacegrids as sg
 import copy
 
 
+def interpret_field(comstr,knownobs,obchain=[]):
+
+  if '-' in comstr:
+    members=comstr.split('-')
+    return {'op':'minus','members':members[:2]}
+
+  elif '+' in comstr:
+    members=comstr.split('+')
+    return {'op':'concat','members':members}
+
 
 def interpret(comstr,knownobs,obchain=[]):
     """
@@ -98,7 +108,7 @@ def find_mirror(fld):
 #      fld.grid[0].dual.value = np.concatenate([np.array([fld.grid[0].dual.value[0],]), fld.grid[0].dual.value])
 
 
-    elif grid[1].axis.name == 'Z':
+    elif (len(grid)>1) and (grid[1].axis.name == 'Z'):
       fld=grid[1].flip(fld)
 
 
@@ -113,7 +123,10 @@ def make_json(fld):
   ndim = fld.value.ndim 
   fld = find_mirror(fld)
 
-  fld.value[np.isnan(fld.value)] = -999.
+  try:
+    fld.value[np.isnan(fld.value)] = -9e20
+  except:
+    pass
 
   msg = {'name':fld.name,'lname':fld.long_name,'value':fld.value.tolist() ,'M':str(M),'m':str(m) , 'ndim':ndim, 'units':fld.units }
 
@@ -183,16 +196,6 @@ def ret_field(request, project,exp, field):
   msg = make_json(fld)
   return HttpResponse(msg)
 
-def ret_field_op(request, project,exp, field, op):
-
-  context = RequestContext(request)
-
-  
-
-  fld, _, _ = get_field(project,exp, field)
-  fld = getattr(sg,op)(fld)
-  msg = make_json(fld)
-  return HttpResponse(msg)
 
 def ret_field_method(request, project,exp, field, method):
 
@@ -215,11 +218,56 @@ def ret_field_method(request, project,exp, field, method):
 
   args = interpret(comstr,knownobs,obchain=[] )[-1]
 
-  print args
+ # print args
 
   fld = getattr(fld,method)(args)
   msg = make_json(fld)
   return HttpResponse(msg)
+
+
+
+def ret_field_ops(request, project,exp, field):
+
+  context = RequestContext(request)
+
+  comstr = request.GET['ops']
+
+  fld, P, E = get_field(project,exp, field)
+
+  knownobs = {'P':P,'E':E}
+
+    # bring axes and coords into main objects knownobs:
+  
+  for a in knownobs['E'].axes:
+    knownobs[a.name] = a
+
+  for a in knownobs['E'].cstack:
+    knownobs[a.name] = a
+
+  # create operators
+  axnames=['X','Y','Z','T']
+  opnames=["Prim","Integ","Mean"] 
+
+  for opname in opnames:
+    for an in axnames:
+    
+      opkey=opname+an
+      op=getattr(sg,opname)(knownobs[an])
+      knownobs[opkey] = op
+
+ # print 'known obs ',
+ # print knownobs
+
+  ops = interpret(comstr,knownobs,obchain=[] )[-1]
+
+ # print ops
+
+#  fld = getattr(fld,method)(args)
+  msg = make_json(ops(fld) )
+  return HttpResponse(msg)
+
+
+
 
 
 
