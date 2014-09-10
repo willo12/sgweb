@@ -8,8 +8,57 @@ import spacegrids as sg
 import copy
 
 
-def interpret_field(comstr,knownobs,obchain=[]):
+def list_ops(P,E):
 
+  knownobs = init_knownobs(P,E)
+  _, oplist = make_ops(knownobs)
+
+  return oplist
+
+def build_knownobs(P,E):
+
+  knownobs = init_knownobs(P,E)
+  knownobs, _ = make_ops(knownobs)
+
+  return knownobs
+
+def make_ops(knownobs):
+ 
+    new_keys=[]
+    # create operators
+    axnames=['X','Y','Z','T']
+    opnames=["Prim","Integ","Mean"] 
+
+    for opname in opnames:
+      for an in axnames:
+    
+        opkey=opname+an
+        new_keys.append(opkey)
+        op=getattr(sg,opname)(knownobs[an])
+        knownobs[opkey] = op
+
+    
+    return knownobs,new_keys
+
+def init_knownobs(P,E):
+
+
+  knownobs = {'P':P,'E':E}
+
+    # bring axes and coords into main objects knownobs:
+  
+  for a in knownobs['E'].axes:
+    knownobs[a.name] = a
+
+  for a in knownobs['E'].cstack:
+    knownobs[a.name] = a  
+
+  return knownobs
+
+
+def interpret_exp(comstr):
+
+ # print comstr
   if '-' in comstr:
     members=comstr.split('-')
     return {'op':'minus','members':members[:2]}
@@ -18,13 +67,13 @@ def interpret_field(comstr,knownobs,obchain=[]):
     members=comstr.split('+')
     return {'op':'concat','members':members}
 
+  return {'op':'none','members':[comstr]}
+
 
 def interpret(comstr,knownobs,obchain=[]):
     """
     e.g. knownobs = {'P':P,'E':E}
     """
-
-  
 
     if '*' in comstr:
       mults = comstr.split('*')
@@ -115,12 +164,23 @@ def find_mirror(fld):
   return fld
 
 
-def make_json(fld):
+def make_msg(fld):
  
   M = np.nanmax(fld.value)
   m = np.nanmin(fld.value)
 
   ndim = fld.value.ndim 
+  
+  if ndim == 3:
+    coord0 = fld.grid[0]
+    fsliced = fld.regrid(coord0**2)
+    msg = {'name':fld.name,'lname':fld.long_name,'M':str(M),'m':str(m), 'ndim':ndim, 'units':fld.units}
+    
+    msg["slices"] = [make_msg(e) for e in fsliced]
+    msg["scoord"] = coord0.value.tolist()   
+    
+    return msg
+  
   fld = find_mirror(fld)
 
   try:
@@ -137,22 +197,44 @@ def make_json(fld):
     msg['coord'+str(i)+'_units'] = fld.grid[i].units
     msg['coord'+str(i)+'_axis'] = fld.grid[i].axis.name
 
-  return dumps(msg)
+  return msg
   
+def make_json(msg):
+ 
+  msg = make_msg(msg)
+
+  return dumps(msg)
+
+
+
 
 def get_field(project,exp, field):
+  "Field can be something like DPO-DPC"
 
+  opob = interpret_exp(exp)
 
   D = sg.info_dict()
   P = sg.Project(D[project])
-  P[exp].load(field)
+
+  if (opob is not None):
+    for exp in opob['members']:
+      P[exp].load(field)
   
-  fld = sg.squeeze(P[exp][field])
+    if (opob['op'] == 'none'):
+      fld = P[opob['members'][0]][field]
+    elif (opob['op'] == 'minus'):
+      fld = P[opob['members'][0]][field] - P[opob['members'][1]][field]
+    elif (opob['op'] == 'concat'):
+      W=sg.Ax("exper")
+      fld = sg.concatenate([P[m][field] for m in opob['members'] ] , ax=W ) 
+
+
+  else:
+    fld = None
+
  # print fld.value.shape
 
-  #return HttpResponse(dumps(fld.json(types_allow=[sg.Gr,sg.Ax,sg.Coord])))
-
-  return fld, P, P[exp]
+  return sg.squeeze(fld), P, P[exp]
 
 
 # --------- views ------------
@@ -196,6 +278,58 @@ def ret_field(request, project,exp, field):
   msg = make_json(fld)
   return HttpResponse(msg)
 
+def projects(request):
+
+  context = RequestContext(request)
+
+  idict = sg.info_dict()
+
+  return HttpResponse(dumps(idict.keys()))
+
+def list_exp(request,project,exp):
+
+  context = RequestContext(request)
+  D = sg.info_dict()
+  P = sg.Project(D[project])
+  E = P[exp]
+
+  expers = P.expers.keys()
+  axes = [ax.name for ax in P.expers.values()[0].axes]
+
+  msg = {"vars":E.available(), "coords":[crd.name for crd in E.cstack]}
+
+  return HttpResponse(dumps(msg))
+
+def list_project(request,project):
+
+  context = RequestContext(request)
+  D = sg.info_dict()
+  P = sg.Project(D[project])
+  expers = P.expers.keys()
+  axes = [ax.name for ax in P.expers.values()[0].axes]
+
+  msg = {"expers":expers, "axes":axes}
+
+  return HttpResponse(dumps(msg))
+
+
+def return_list_ops(request,project):
+
+  context = RequestContext(request)
+  D = sg.info_dict()
+  P = sg.Project(D[project])
+  E = P.expers.values()[0]
+
+#  axes = [ax.name for ax in P.expers.values()[0].axes]
+
+  msg = list_ops(P,E)
+
+ 
+
+  return HttpResponse(dumps(msg))
+
+
+
 
 def ret_field_method(request, project,exp, field, method):
 
@@ -227,6 +361,11 @@ def ret_field_method(request, project,exp, field, method):
 
 
 def ret_field_ops(request, project,exp, field):
+  """
+  project: (str) project name
+  exp: (str) experiment name 
+  field: (str) field name
+  """
 
   context = RequestContext(request)
 
@@ -234,33 +373,11 @@ def ret_field_ops(request, project,exp, field):
 
   fld, P, E = get_field(project,exp, field)
 
-  knownobs = {'P':P,'E':E}
-
-    # bring axes and coords into main objects knownobs:
-  
-  for a in knownobs['E'].axes:
-    knownobs[a.name] = a
-
-  for a in knownobs['E'].cstack:
-    knownobs[a.name] = a
-
-  # create operators
-  axnames=['X','Y','Z','T']
-  opnames=["Prim","Integ","Mean"] 
-
-  for opname in opnames:
-    for an in axnames:
-    
-      opkey=opname+an
-      op=getattr(sg,opname)(knownobs[an])
-      knownobs[opkey] = op
-
- # print 'known obs ',
- # print knownobs
+  knownobs = build_knownobs(P,E)
 
   ops = interpret(comstr,knownobs,obchain=[] )[-1]
 
- # print ops
+  print ops
 
 #  fld = getattr(fld,method)(args)
   msg = make_json(ops(fld) )

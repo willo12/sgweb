@@ -89,8 +89,13 @@
                     .text("data")
     //                .on("click",function(d){url=prep_url('A_sat');d3.json(url,function(data){handle_data(div,data,url)})})
 
-                    .on("click",function(d){url=prep_url('O_temp/ops/?ops=MeanX');d3.json(url,function(data){handle_data(div,data,url)})})
+     //               .on("click",function(d){url=prep_url('O_temp');d3.json(url,function(data){rha(div,data)})})
 
+ //                   .on("click",function(d){url=prep_url('A_sat');d3.json(url,function(data){rha(div,data)})})
+
+                    .on("click",function(d){url=prep_url('O_velY/ops/?ops=PrimZ*IntegX');d3.json(url,function(data){handle_data(div,data,url)})})
+
+    //            .on("click",function(d){url=prep_url('O_velX/method/mean/?args=Z');d3.json(url,function(data){handle_data(div,data,url)})})
 
 
 function handle_more_data(axob,data){
@@ -108,7 +113,32 @@ function handle_more_data(axob,data){
     return plot_contour(axob.svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
 }
 
-function handle_data(div,data,url){
+function rha(div,data){
+    
+    console.log("rha")
+
+
+    svg=div.selectAll("svg")
+    for (var i=0;i<data.slices.length;i++){
+        
+        data.slices[i].value=handle_nan(data.slices[i].value);
+    }
+    
+    var w=svg.attr("width")
+    var h=svg.attr("height")
+ 
+    var wcb=50,
+    padding=40;
+
+    // calculate scales
+
+    axob=prep_axes(svg, data.slices[0],padding,wcb,true,true,-1)
+    addcycler(axob,data,div,"button",my_plot)
+
+}
+
+
+function handle_data(div,data){
     
     svg=div.selectAll("svg")
     data.value = handle_nan(data.value);
@@ -120,21 +150,20 @@ function handle_data(div,data,url){
     padding=40;
 
     // calculate scales
+
     axob=prep_axes(svg, data,padding,wcb,true,true,-1)
-
+ 
     elms=my_plot(axob,data)
-
 
 
 // element w=handle_more_data(axob,data) is removed again with w.remove()
 
-addtoggle(axob,data,div,"button",handle_more_data,"conts off","conts")
+    addtoggle(axob,data,div,"button",handle_more_data,"conts off","conts")
 
-d3.json(prep_url('G_kmt'),function(data){addtoggle(axob,data,div,"button",my_kmt,"geog off","geography")})
+//d3.json(prep_url('G_kmt'),function(data){addtoggle(axob,data,div,"button",my_kmt,"geog off","geography")})
 
 
-d3.json(prep_url('O_psi'),function(data){addtoggle(axob,data,div,"button",handle_more_data,"psi off","psi")})
-
+//d3.json(prep_url('O_psi'),function(data){addtoggle(axob,data,div,"button",handle_more_data,"psi off","psi")})
 
     return elms
 
@@ -177,6 +206,41 @@ function addtoggle(axob,data,div,tag,func,onms,offms){
 
 
 
+function cycler(w,wmax,axob,data,but,func){
+
+    w=(w+1)%wmax
+
+    but.text=data.scoord[w]
+    return [w,func(axob,data.slices[w])]
+
+};
+
+function addcycler(axob,data,div,tag,func){
+
+    var w,
+        clr,
+        wmax=data.slices.length,
+        but 
+
+    but=div.append(tag)
+    but.attr("id","cycler"+data.name)
+        .text(data.name)
+        .on("click",function(d){
+            // need to wrap toggle var w inside here:
+            clr=cycler(0,wmax,axob,data,but,func)
+            w=clr[0]
+
+            but.on("click",function(d){
+                clr[1][0].remove()
+                clr[1][1].remove()
+                clr=cycler(w,wmax,axob,data,but,func);
+                w=clr[0]  
+               
+            });
+         })
+}
+
+
 
 function my_kmt(axob,data){
 
@@ -202,17 +266,17 @@ function my_plot(axob,data){
  
     tuples = data2rectangles(data,axob.xScale,axob.yScale)
 
-    var pclr=pcolor(axob.svg,tuples,data.m,data.M,24)
+    var pclr=pcolor(axob.svg,tuples,data.m,data.M,24,'standard')
 
      //       svg = plot_contour(svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
 
-    axob.svg.append("ClipPath")
-        .attr("id", "p-area")
-        .append("rect")
-        .attr("x",axob.padding)
-        .attr("y",axob.padding)
-        .attr("w", w-axob.padding-axob.wcb)
-        .attr("height",h-axob.padding)
+ //   axob.svg.append("ClipPath")
+ //       .attr("id", "p-area")
+ //       .append("rect")
+ //       .attr("x",axob.padding)
+ //       .attr("y",axob.padding)
+ //       .attr("w", w-axob.padding-axob.wcb)
+ //       .attr("height",h-axob.padding)
 
     var cbar=colorbar(axob.svg,data.m,data.M,30, axob.wcb,axob.padding,data.units,colours);
 
@@ -222,13 +286,7 @@ function my_plot(axob,data){
 
     return [pclr,cbar]             
 };
-
-
-
-
-
         </script>
-
         
 <script type="text/javascript">
  
@@ -489,9 +547,9 @@ var linesvg = svg.append("g")
 function handle_nan(value){
 
     var row
-    for (i=0;i<value.length;i++){
+    for (var i=0;i<value.length;i++){
         row=value[i]
-        for (j=0;j<row.length;j++){
+        for (var j=0;j<row.length;j++){
             if (row[j] < -8e20){
    
    // this needs to be some other value for d3.max and d3.min to work.
@@ -511,7 +569,8 @@ function prep_url(varname){
 //svg, data.coord0_edges,data.coord1_edges,data.m,data.M,padding,wcb,true,true,data.units,data.coord1_lname,data.coord0_lname,data.lname,-1
 
 function prep_axes(svg, data,padding,wcb,xax,yax,i){
-
+    // add labels and axes
+    // create axes object axob containing information about labels and axes, including handles to entire label set and subsets
 
     var ycoord_edges=data.coord0_edges,
         xcoord_edges=data.coord1_edges,
@@ -525,13 +584,16 @@ function prep_axes(svg, data,padding,wcb,xax,yax,i){
     var w=svg.attr("width"),
         h=svg.attr("height");
         
-if (i >-1){
-    title =  ' ('+String.fromCharCode(97+i) +') '+title
+    if (i >-1){
+        title =  ' ('+String.fromCharCode(97+i) +') '+title
 
-}
+    }
 
-hylabel=svg.append("g")
-  .attr("class", "my_flabel")
+    haxes=svg.append("g")
+             .attr("class","my_flabel")
+
+    hylabel=haxes.append("g")
+            .attr("class", "my_flabel")
       .append("text")
       .attr("class", "y label")
       .attr("transform", "rotate(-90)")
@@ -541,7 +603,7 @@ hylabel=svg.append("g")
       .style("text-anchor", "end")
       .text(ylabel);
 
-hxlabel=svg.append("g")
+hxlabel=haxes.append("g")
   .attr("class", "my_flabel")
 .append("text")
       .attr("class", "x label")
@@ -551,7 +613,7 @@ hxlabel=svg.append("g")
       .attr("y", h-6 )
       .text(xlabel);
 
-htitle=svg.append("g")
+htitle=haxes.append("g")
   .attr("class", "my_flabel")
 .append("text")
 //      .attr("class", "x label")
@@ -590,10 +652,12 @@ htitle=svg.append("g")
                       .scale(xScale)
                       .orient("bottom");
 
-        svg.append("g")
+        haxes.append("g")
            .attr("class", "my_axis")
            .attr("transform","translate(0," + (h - padding) + ")")
            .call(xAxis);              
+    }else{
+        var xAxis=false
     }
 
     if (yax){
@@ -601,23 +665,25 @@ htitle=svg.append("g")
                       .scale(yScale)
                       .orient("left");
 
-        svg.append("g")
+        haxes.append("g")
            .attr("class", "my_axis")
            .attr("transform", "translate(" + padding + ",0)")
            .call(yAxis);      
+    }else{
+        var yAxis=false
     }
 
-    axob={svg:svg,xScale:xScale,yScale:yScale,wcb:wcb,padding:padding,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
+    axob={svg:svg,haxes:haxes,xScale:xScale,yScale:yScale,wcb:wcb,padding:padding,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
 
     return axob
 }
 
 
 
-function pcolor(svg,tuples,m,M,num_cont){
+function pcolor(svg,tuples,m,M,num_cont,cmap){
 
 
-    colours = make_cmap('standard',m,M,num_cont);
+    colours = make_cmap(cmap,m,M,num_cont);
     
 
  //   var yScaleWidth = d3.scale.linear()
@@ -759,7 +825,7 @@ function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts,
     
     if ( conts == false){
         contl=find_conts(m,M,num_cont)
-        console.log(contl.om)
+       
         zs=cont2str(contl.range,1)
         om=contl.om
 
@@ -867,7 +933,7 @@ function cont2str(conts,decs){
     var lbl=0,
         strconts=[];
 
-    for (i=0;i<conts.length;i++){
+    for (var i=0;i<conts.length;i++){
         lbl = parseFloat(conts[i]);
         if (lbl == Math.round(lbl)){
             lbl=lbl.toFixed(0)
@@ -893,8 +959,10 @@ function find_conts(m,M,num_cont){
         if (om[1] == -2){
             var cont_step=(M-m)/num_cont
 
-    //        console.log(d3.range(m,M,cont_step))
-            return d3.range(m,M,cont_step)
+    //        console.log(m+'..'+M+'..'+cont_step)
+      
+            return {range:d3.range(m,M,cont_step) , om:1}
+
         }
 
         var dMM=om[0],
@@ -904,12 +972,17 @@ function find_conts(m,M,num_cont){
 
      //       cont_step=toOrdermag(Math.round( (MM-mm)/num_cont ),omag)
 
-           cont_step=toOrdermag(Math.round( (MM-mm)/num_cont ),omag)
+           // This is a hack! to be fixed.
+
+           cont_step=toOrdermag(Math.round( (MM-mm)/num_cont ),omag) 
+           if (cont_step==0){
+               cont_step=(M-m)/num_cont
+           }
 
     //        cont_step=toOrdermag( (M-m)/num_cont ,om)
 
         console.log('omag '+omag + '  num_cont: ' + num_cont)
-//        console.log('baba ' + mm + '.. ' + dMM + ' .. '+MM + '.. ' + cont_step)
+        console.log('baba ' + mm + '.. ' + dMM + ' .. '+MM + '.. ' + cont_step)
 //        console.log('yaga ' + Math.floor(mm) + '.. ' + dMM + ' .. '+Math.ceil(MM) + '.. ' + cont_step)
 
         if (omag >2 || omag<-2){
@@ -926,15 +999,28 @@ function find_conts(m,M,num_cont){
 }
 
 
-cmaps = {standard:['#000099','#0000FF','#3399FF','#00CCFF','#00CC00','#66FF00','#FFFF00','#CC0000','#FF6633'], BWR:['blue','white','red']}
+cmaps = {standard:['#000099','#0000FF','#3399FF','#00CCFF','#00CC00','#66FF00','#FFFF00','#CC0000','#FF6633'], BWR:['blue','cyan','white','orange','red']}
 
 function make_cmap(map_name,m,M,num_cont){
     
     if (num_cont==0){
         var cmap = cmaps[map_name],
-            step = (M - m)/ (cmap.length - 1),
-            zs_set = d3.range(m,M ,step);
+            step,
+            zs_set;
       
+        if (m<0 && M>0 && map_name=='BWR'){
+            step = -2*m/(cmap.length-1)
+            var step2=2*M/(cmap.length-1)
+            zs_set = d3.range(m,0. ,step).concat(d3.range(0.,M  ,step2).concat([parseFloat(M)]));
+  //          console.log(0.1*step2)
+  //          console.log(d3.range(0.,M  ,step2).concat([parseFloat(M)]) )
+        }else{
+            step = (M - m)/ (cmap.length )
+            zs_set = d3.range(m,M ,step);
+        }
+
+  //      zs_set=[parseFloat(10*m)].concat( zs_set)
+  //      cmap = ['black'].concat(cmap)
         return d3.scale.linear().domain(zs_set).range(cmap);
     }
     else{
@@ -942,7 +1028,7 @@ function make_cmap(map_name,m,M,num_cont){
 
         var linmap=make_cmap(map_name,m,M,0);
     
-        var    zs_set=find_conts(m,M,num_cont).range,
+        var zs_set=find_conts(m,M,num_cont).range,
             imzs=[];
 
         
@@ -953,8 +1039,6 @@ function make_cmap(map_name,m,M,num_cont){
         
         return d3.scale.quantize().domain([m,M]).range(imzs);
     }
-
-
 };
  
 
@@ -963,7 +1047,7 @@ function get_grid(data){
     var ycoord = data.grid.members[0].value 
     var xcoord = data.grid.members[1].value
 
-    for (i=0;i<xcoord.length;i++){
+    for (var i=0;i<xcoord.length;i++){
         xcoord[i] = xcoord[i] - 90.
     }
 
