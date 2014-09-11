@@ -7,7 +7,7 @@ urlpatterns = patterns('',url(r'^$',views.index, name='index' ),
 
                          url(r'^projects/(?P<project>[\w]+)/list_ops/$', views.return_list_ops, name = 'list_ops'),
 
-                         url(r'^projects/(?P<project>[\w]+)/(?P<exp>[\w]+)/$', views.list_exp, name = 'list_exp'),
+                         url(r'^projects/(?P<project>[\w]+)/(?P<exp>[\w\.]+)/$', views.list_exp, name = 'list_exp'),
 
 
                           url(r'^projects/(?P<project>[\w]+)/$', views.list_project, name = 'list_project'),
