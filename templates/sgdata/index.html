@@ -88,32 +88,34 @@ var svg=div.append("svg")
 
 var url
 
+// create dropdown list with field names
+//d3.json('/sgdata/projects/my_project/DPO/',function(data){
+//    div.append("select")
+//       .attr("id","varsel")
+//       .attr("name","vars")
+//       .on("change", function(){
+//          url=prep_url(this.value);
+//          div.selectAll(".tempbut").remove(); 
+//          div.selectAll(".cyclebut").remove();
+//          svg.selectAll(".my_pcolor").remove();
+//         svg.selectAll(".my_colorbar").remove();
+//          svg.selectAll(".my_flabel").remove();
+//          svg.selectAll(".my_contplot").remove();
+//          svg.selectAll(".my_clabel").remove();
 
-d3.json('/sgdata/projects/my_project/DPO/',function(data){
-    div.append("select")
-       .attr("id","varsel")
-       .attr("name","vars")
-       .on("change", function(){
-          url=prep_url(this.value);
-          div.selectAll(".tempbut").remove(); 
-          div.selectAll(".cyclebut").remove();
-          svg.selectAll(".my_pcolor").remove();
-          svg.selectAll(".my_colorbar").remove();
-          svg.selectAll(".my_flabel").remove();
-          svg.selectAll(".my_contplot").remove();
-          svg.selectAll(".my_clabel").remove();
+//          d3.json(url,function(data){dimdesp(div,data)})
+//        })
+//       .selectAll("option")
+//       .data(data.vars)
+//       .enter()
+//       .append("option")
+//       .text(function(d){return d})
+//       .attr("value",function(d){return d})
+//});
 
-          d3.json(url,function(data){rha(div,data)})
-        })
-       .selectAll("option")
-       .data(data.vars)
-       .enter()
-       .append("option")
-       .text(function(d){return d})
-       .attr("value",function(d){return d})
-});
-
-
+url=prep_url("A_sat/ops/?ops=MeanX")
+d3.json(url,function(data){dimdesp(div,data)})
+       
 
 //div.append("button")
 //   .attr("id","but1")
@@ -131,50 +133,120 @@ d3.json('/sgdata/projects/my_project/DPO/',function(data){
 
 function handle_more_data(axob,data){
 
-    data.value = handle_nan(data.value);
-    data.lname =''
+    data = handle_nan(data);
+    data.lname ='' // block out title as this is a secondary plot
 
-
-    var w=svg.attr("width")
-    var h=svg.attr("height")
- 
-    var wcb=50,
-        padding=40;
-     
     return plot_contour(axob.svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
 }
 
-function handle_nan3D(data){
-    for (var i=0;i<data.slices.length;i++){
-        
-        data.slices[i].value=handle_nan(data.slices[i].value);
-    }
+function handle_nan2D(value){
 
+    var row
+    for (var i=0;i<value.length;i++){
+        row=value[i]
+        for (var j=0;j<row.length;j++){
+            if (row[j] < -8e20){
+   
+   // this needs to be some other value for d3.max and d3.min to work.
+                row[j] = NaN
+            }
+        }
+    }
+    return value
+}
+
+function handle_nan(data){
+    if (data.ndim==2){
+        data.value=handle_nan2D(data.value)        
+    }else{
+        for (var i=0;i<data.slices.length;i++){
+            data.slices[i].value=handle_nan2D(data.slices[i].value);
+        }    
+    }
     return data
 }
 
-function rha(div,data){
+
+function dimdesp(div,data){
     
+    if (data.ndim>1){
+        rha(div,data)
+  
+    }else {
+        console.log('1D')
+        handle1D(div,data)
+    }
+}
+
+function handle1D(div,data){
+
+    svg=div.selectAll("svg")
+
+
+var axob=prep_axes1D(div, data,true,true,-1)
+    elms=display1D(axob,data)  
+}
+
+function rha(div,data){
+     
+    // handle 2D and 3D fields
+
     console.log("rha")
 
 
-    svg=div.selectAll("svg")
-    data = handle_nan3D(data)
+    var svg=div.selectAll("svg")
+    data = handle_nan(data)
     
-    var w=svg.attr("width")
-    var h=svg.attr("height")
- 
     var wcb=50,
     padding=40;
 
     // calculate scales
+  
+    if (data.ndim==3){
+        // this puts the axes on the figure AND returns axob
+        axob=prep_axes(div, data.slices[0],padding,wcb,true,true,-1)
 
-    axob=prep_axes(div, data.slices[0],padding,wcb,true,true,-1)
-    addcycler(axob,data,div,"button",display2D)
-
+        addcycler(axob,data,"button",display2D)
+    }else if (data.ndim==2){
+        axob=prep_axes(div, data,padding,wcb,true,true,-1)
+       
+        elms = display2D(axob,data)
+    }
  //   console.log('over here')
 }
 
+
+
+
+function display1D(axob,data){
+    var elms=[],
+        but
+
+    elms = elms.concat(doPlot(axob,data))
+
+    but=axob.div.append("button")
+        but.attr("id","change_field")
+           .attr("class","chbut")
+            .text("change field")
+            .on("click",function(d){
+                
+   d3.json(prep_url("F_precip/ops/?ops=MeanX"),function(data){addtoggle(axob,data,"button",doPlotu,"F_precip off","F_precip","click")})
+             })
+
+
+
+    but=axob.div.append("button")
+        but.attr("id","extra_field")
+           .attr("class","tempbut")
+            .text("extra field")
+            .on("click",function(d){
+                
+   d3.json(prep_url("A_slat/ops/?ops=MeanX"),function(data){addtoggle(axob,data,"button",doPlot,"A_slat off","A_slat","click")})
+             })
+
+
+    return elms
+}
 
 
 
@@ -182,14 +254,11 @@ function display2D(axob,data){
     var elms=[],
         but
 
-    elms = elms.concat(my_plot(axob,data))
-
+    elms = elms.concat(doPcolor(axob,data))
 
 // element w=handle_more_data(axob,data) is removed again with w.remove()
 
     elms = elms.concat(addtoggle(axob,data,"button",handle_more_data,"conts off","conts","click"))
-
-
 
     but=axob.div.append("button")
         but.attr("id","extra_field")
@@ -210,27 +279,6 @@ function display2D(axob,data){
 //d3.json(prep_url('O_psi'),function(data){addtoggle(axob,data,div,"button",handle_more_data,"psi off","psi","click")})
 
     return elms
-}
-
-function handle_data(div,data){
-    
-    svg=div.selectAll("svg")
-    data.value = handle_nan(data.value);
-    
-    var w=svg.attr("width")
-    var h=svg.attr("height")
-    
-    var wcb=50,
-    padding=40;
-
-    // calculate scales
-
-    axob=prep_axes(div, data,padding,wcb,true,true,-1)
- 
-    elms = display2D(div,data)
-
-    return elms
-
 }
 
 
@@ -272,6 +320,12 @@ function addtoggle(axob,data,tag,func,onms,offms,event){
 }
 
 
+function expsel1D(axob,data,tag,func){
+    // select exp for 1D graph and add to existing data and updates plot
+    // tag is usually "button"
+    // 
+
+}
 
 function remhandles(handles){
     for (var i=0;i<handles.length;i++){
@@ -289,15 +343,15 @@ function cycler(w,wmax,axob,data,but,func){
 };
 
 
-
-function addcycler(axob,data,div,tag,func){
-
+function addcycler(axob,data,tag,func){
+   // adds an element such as button to cycle through 3D field 
+   // tag is usually "button"
     var w,
         clr,
         wmax=data.slices.length,
         but
 
-    but=div.append(tag)
+    but=axob.div.append(tag)
     but.attr("id","cycler"+data.name)
         .attr("class","cyclebut")
         .text("cycle from "+ data.scoord[0])
@@ -340,129 +394,312 @@ function my_kmt(axob,data){
 };
 
 
-
-
-
-
-function my_plot(axob,data){
+function doPlot(axob,data){
  
+// cast data to be used in plot
+var lineData=data2lines(data,axob.xScale,axob.yScale)
+
+var plt=plot(axob.svg,lineData)
+
+return plt
+  
+};
+
+function doPlotu(axob,data){
+   // update existing plot
+
+    // prepare test data
+ //   data.M = 1.5*data.M;
+
+    // update the axes and obtain updated scales
+    axob=prep_axes1Du(axob,div, data,true,true,-1)
+
+// cast data to be used in plot. lineData encodes xScale, yScale
+    var lineData=data2lines(data,axob.xScale,axob.yScale)
+
+    var plt=plotu(axob.svg.selectAll(".line"),lineData)
+
+    return plt
+};
+
+
+function doPcolor(axob,data){
+ 
+    // cast data as tuples to be used in pcolor
     tuples = data2rectangles(data,axob.xScale,axob.yScale)
 
     var pclr=pcolor(axob.svg,tuples,data.m,data.M,24,'standard')
 
-     //       svg = plot_contour(svg,d3.transpose(data.value),data.coord0,data.coord1,axob.xScale,axob.yScale,data.m,data.M,12, false, true);
-
- //   axob.svg.append("ClipPath")
- //       .attr("id", "p-area")
- //       .append("rect")
- //       .attr("x",axob.padding)
- //       .attr("y",axob.padding)
- //       .attr("w", w-axob.padding-axob.wcb)
- //       .attr("height",h-axob.padding)
-
     var cbar=colorbar(axob.svg,data.m,data.M,30, axob.wcb,axob.padding,data.units,colours);
-
-        
-
-    //          plot(svg,data.value, ycoord,true,true,units,xlabel,ylabel,title,-1)
 
     return [pclr,cbar]             
 };
-        </script>
-        
-<script type="text/javascript">
- 
 
-
-function plot(svg,data, xcoord,xax,yax,units,xlabel,ylabel,title,i){
+function plot(svg,lineData){
     // expects data to be either an array of numbers
     // or an array of such arrays (multiple curves)
 
-    if (data[0].length == undefined){
-        data=[data];
-        xcoord=[xcoord];
+ // line plotting
+
+// function used to draw lines
+    var lineFunc = d3.svg.line()
+                        .x(function(d) {
+                            return d.x;
+                        })
+                        .y(function(d) {
+                            return d.y;
+                        })
+                        .interpolate('linear');
+
+    plt = svg.append("g")
+              .attr("class","my_plot")
+
+// plot one or more lines, using lineFunc
+ 
+   
+        plt.append('svg:path')
+          .attr('class', 'line')
+          .attr('d', lineFunc(lineData))
+  
+    return plt
+}
+
+
+
+
+
+function plotu(plt,lineData){
+    // expects data to be either an array of numbers
+    // or an array of such arrays (multiple curves)
+
+ // line plotting
+
+// function used to draw lines
+    var lineFunc = d3.svg.line()
+                        .x(function(d) {
+                            return d.x;
+                        })
+                        .y(function(d) {
+                            return d.y;
+                        })
+                        .interpolate('linear');
+
+ //   plt = svg.append("g")
+ //             .attr("class","my_plot")
+
+// plot one or more lines, using lineFunc
+ 
+   
+        plt.transition()
+        .duration(1000)
+        .attr('d', lineFunc(lineData))
+  
+    return plt
+}
+
+
+
+
+
+function prep_url(varname){
+    return '/sgdata/my_project/DPO/' + varname
+}
+
+
+//svg, data.coord0_edges,data.coord1_edges,data.m,data.M,padding,wcb,true,true,data.units,data.coord1_lname,data.coord0_lname,data.lname,-1
+
+function prep_axes1Du(axob,div, data,xax,yax,i){
+    // prepares and plots updated axes
+
+    // for each of the following statements find an update equiv
+
+    
+    var My = data.M;
+    var my = data.m;
+    var Mx = d3.max(data.coord0);
+    var mx = d3.min(data.coord0);
+
+    var svg=div.selectAll("svg")
+
+    var w=svg.attr("width"),
+        h=svg.attr("height"),
+
+        units=data.units,
+        xlabel=data.coord0_lname,    
+        ylabel=units,
+        title=data.lname;
+ 
+    if (i >-1){
+        title =  ' ('+String.fromCharCode(97+i) +') '+title
     }
 
-    // use nested max/ min as per mbostock answer on stackoverflow
-    var My = d3.max(data.map(function(array) {
-  return d3.max(array);
-}));
-
-    var my = d3.min(data.map(function(array) {
-  return d3.min(array);
-}));
-
-    var Mx = d3.max(xcoord.map(function(array) {
-  return d3.max(array);
-}));
-
-    var mx = d3.min(xcoord.map(function(array) {
-  return d3.min(array);
-}));
+var haxes=svg.select(".my_plot_axes")
+             
 
 
+var htitle=haxes.selectAll("my_plot_title")
+      .attr("class", "my_axis")
+      .attr("text-anchor", "start")
+      .attr("x", padding  )
+      .attr("y", 25 )
+      .text(title);
 
-    console.log( 'mx and Mx: ' + mx + ' ' + Mx)
-
-    var w=svg.attr("width")
-    var h=svg.attr("height")
- 
-
-    var lineData = [],
-        lines = [],
-        xc,
-        yc     
- 
-
-    for (var j=0;j<data.length;j++){
-        lineData = []
-        xc=xcoord[j]
-        yc=data[j]
-        for (var i=0;i<yc.length;i++){
-            
-            lineData.push({x:xc[i],y:yc[i]})
-            lines.push(lineData)
-
-
-        }
+var MARGINS = {
+        top: 30,
+        right: 20,
+        bottom: 30,
+        left: 50
     }
 
-var vis = svg,
-    WIDTH = w,
-    HEIGHT = h,
-    MARGINS = {
-      top: 30,
-      right: 20,
-      bottom: 30,
-      left: 50
-    },
-    xRange = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([mx,Mx]),
-    yRange = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([my, My]),
-    xAxis = d3.svg.axis()
-      .scale(xRange)
-      .tickSize(5)
-      .tickSubdivide(true),
-    yAxis = d3.svg.axis()
-      .scale(yRange)
+var xScale=axob.xScale
+var yScale=axob.yScale
+
+xScale.domain([mx,Mx])
+yScale.domain([my, My])
+
+if (xax){ 
+var hxlabel=false    
+//var hxlabel=haxes.append("g")
+//  .attr("class", "my_flabel")
+//.append("text")
+//      .attr("class", "x label")
+//      .attr("class", "my_axis")
+//      .attr("text-anchor", "end")
+//      .attr("x", w- MARGINS.right)
+//      .attr("y", h )
+//      .text(xlabel);
+
+    var xAxis = d3.svg.axis()
+                 .scale(xScale)
+                 .tickSize(5)
+                 .tickSubdivide(true);
+
+haxes.select('.my_x_axis')
+  .transition()
+  .duration(1000)
+  .call(xAxis);
+}else{
+    var hxlabel=false
+    var xAxis=false 
+}
+
+if (yax){
+var hylabel=haxes.append("g")
+//  .attr("class", "my_flabel")
+//      .append("text")
+//      .attr("class", "y label")
+//      .attr("transform", "rotate(-90)")
+//      .attr("y", 6)
+//      .attr("x", -26)
+//      .attr("dy", ".71em")
+//      .style("text-anchor", "end")
+//      .text(ylabel);
+
+    var yAxis = d3.svg.axis()
+      .scale(yScale)
       .tickSize(5)
       .orient('left')
       .tickSubdivide(true);
- 
-vis.append('svg:g')
-  .attr('class', 'x axis')
-  .attr("class", "my_axis")
-  .attr('transform', 'translate(0,' + (HEIGHT - MARGINS.bottom) + ')')
-  .call(xAxis);
 
- 
-vis.append('svg:g')
-  .attr('class', 'y axis')
-  .attr("class", "my_axis")
-  .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
+haxes.selectAll(".my_y_axis")
+  .transition()
+  .duration(1000)
   .call(yAxis);
-    
 
-vis.append("g")
+//haxes.append('svg:g')
+//  .attr('class', "my_y_axis")
+//  .attr("class", "my_axis")
+//  .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
+//  .call(yAxis);
+
+} else{
+    var hylabel=false
+    var yAxis=false
+}   
+
+
+    return {svg:svg,div:div,haxes:haxes,xScale:xScale,yScale:yScale,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
+
+
+
+
+
+}
+
+function prep_axes1D(div, data,xax,yax,i){
+
+
+    var My = data.M;
+    var my = data.m;
+    var Mx = d3.max(data.coord0);
+    var mx = d3.min(data.coord0);
+
+    var svg=div.selectAll("svg")
+
+    var w=svg.attr("width"),
+        h=svg.attr("height"),
+
+        units=data.units,
+        xlabel=data.coord0_lname,    
+        ylabel=units,
+        title=data.lname;
+ 
+    if (i >-1){
+        title =  ' ('+String.fromCharCode(97+i) +') '+title
+    }
+
+var haxes=svg.append("g")
+             .attr("class","my_flabel my_plot_axes")
+            
+
+var htitle=haxes.append("g")
+  .attr("class", "my_flabel")
+.append("text")
+//      .attr("class", "x label")
+      .attr("class", "my_axis my_plot_title")
+      
+      .attr("text-anchor", "start")
+      .attr("x", padding  )
+      .attr("y", 25 )
+      .text(title);
+
+    var MARGINS = {
+        top: 30,
+        right: 20,
+        bottom: 30,
+        left: 50
+    },
+    xScale = d3.scale.linear().range([MARGINS.left, w - MARGINS.right]).domain([mx,Mx]),
+    yScale = d3.scale.linear().range([h - MARGINS.top, MARGINS.bottom]).domain([my, My]);
+
+if (xax){ 
+    var hxlabel=haxes.append("g")
+      .attr("class", "my_flabel")
+      .append("text")
+          .attr("class", "x label my_axis")
+          
+          .attr("text-anchor", "end")
+          .attr("x", w- MARGINS.right)
+          .attr("y", h )
+          .text(xlabel);
+
+    var xAxis = d3.svg.axis()
+                 .scale(xScale)
+                 .tickSize(5)
+                 .tickSubdivide(true);
+
+haxes.append('g')
+  .attr('class', "my_x_axis my_axis")
+
+  .attr('transform', 'translate(0,' + (h - MARGINS.bottom) + ')')
+  .call(xAxis);
+}else{
+    var hxlabel=false
+    var xAxis=false 
+}
+
+if (yax){
+var hylabel=haxes.append("g")
   .attr("class", "my_flabel")
       .append("text")
       .attr("class", "y label")
@@ -473,182 +710,27 @@ vis.append("g")
       .style("text-anchor", "end")
       .text(ylabel);
 
-vis.append("g")
-  .attr("class", "my_flabel")
-.append("text")
-      .attr("class", "x label")
-      .attr("class", "my_axis")
-      .attr("text-anchor", "end")
-      .attr("x", WIDTH- MARGINS.right)
-      .attr("y", HEIGHT )
-      .text(xlabel);
+    var yAxis = d3.svg.axis()
+      .scale(yScale)
+      .tickSize(5)
+      .orient('left')
+      .tickSubdivide(true);
+
+haxes.append('g')
+  .attr('class', "my_y_axis my_axis")
+  
+  .attr('transform', 'translate(' + (MARGINS.left) + ',0)')
+  .call(yAxis);
+} else{
+    var hylabel=false
+    var yAxis=false
+}   
 
 
- // line plotting
-
-// function used to draw lines
-var lineFunc = d3.svg.line()
-  .x(function(d) {
-    return xRange(d.x);
-  })
-  .y(function(d) {
-    return yRange(d.y);
-  })
-  .interpolate('linear');
-
-// plot one or more lines, using lineFunc
-for  (var i=0;i<lines.length;i++){
-    
-    vis.append('svg:path')
-      .attr('class', 'line')
-      .attr('d', lineFunc(lines[i]))
-   
-    }
-}
-
-
-
-
-
-
-
-
-
-function plot2(svg,data, xcoord){
-    // from mbostok github. not working yet
-
-    // expects data to be either an array of numbers
-    // or an array of such arrays (multiple curves)
-
-    if (data[0].length == undefined){
-        data=[data];
-        xcoord=[xcoord];
-    }
-
-    var lineData = [],
-        lines = [],
-        xc,
-        yc     
- 
-    for (var j=0;j<data.length;j++){
-        lineData = []
-        xc=xcoord[j]
-        yc=data[j]
-        for (var i=0;i<yc.length;i++){
-            
-            lineData.push({x:xc[i],y:yc[i]})
-        lines.push(lineData)
-
-        }
-    }
-
-    var w=svg.attr("width")
-    var h=svg.attr("height")
- 
-var margin = {top: 20, right: 20, bottom: 30, left: 50},
-    width = w - margin.left - margin.right,
-    height = h - margin.top - margin.bottom;
-
-var x = d3.scale.linear()
-    .range([0, width]);
-
-var y = d3.scale.linear()
-    .range([height, 0]);
-
-var xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom");
-
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left");
-
-
-var line = d3.svg.line()
-    .x(function(d) { return x(d.x); })
-    .y(function(d) { return y(d.y); });
-
-var linesvg = svg.append("g")
-    
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-//d3.tsv("data.tsv", function(error, data) {
-//  data.forEach(function(d) {
-//    d.date = parseDate(d.date);
-//    d.close = +d.close;
-//  });
-
-  x.domain(d3.extent(data, function(d) { return d.x; }));
-  y.domain(d3.extent(data, function(d) { return d.y; }));
-
-  linesvg.append("g")
-      .attr("class", "x axis")
-      .attr("transform", "translate(0," + height + ")")
-      .call(xAxis);
-
-  linesvg.append("g")
-      .attr("class", "y axis")
-      .call(yAxis)
-    .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 6)
-      .attr("dy", ".71em")
-      .style("text-anchor", "end")
-      .text("y label");
-
-// 
-  for  (var i=0;i<lines.length;i++){
-
-    linesvg.append("path")
-        .datum(lines[i])
-        .attr("class", "line")
-        .attr("d", line);
+    return {svg:svg,div:div,haxes:haxes,xScale:xScale,yScale:yScale,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
 
 }
 
-//});
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function handle_nan(value){
-
-    var row
-    for (var i=0;i<value.length;i++){
-        row=value[i]
-        for (var j=0;j<row.length;j++){
-            if (row[j] < -8e20){
-   
-   // this needs to be some other value for d3.max and d3.min to work.
-                row[j] = NaN
-            }
-        }
-    }
-
-    return value
-}
-
-function prep_url(varname){
-    return '/sgdata/my_project/DPO/' + varname
-}
-
-
-//svg, data.coord0_edges,data.coord1_edges,data.m,data.M,padding,wcb,true,true,data.units,data.coord1_lname,data.coord0_lname,data.lname,-1
 
 function prep_axes(div, data,padding,wcb,xax,yax,i){
     // add labels and axes
@@ -673,31 +755,10 @@ function prep_axes(div, data,padding,wcb,xax,yax,i){
 
     }
 
-    haxes=svg.append("g")
+    var haxes=svg.append("g")
              .attr("class","my_flabel")
 
-    hylabel=haxes.append("g")
-            .attr("class", "my_flabel")
-      .append("text")
-      .attr("class", "y label")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 0)
-      .attr("x", -Math.round((h-padding)/2))
-      .attr("dy", ".71em")
-      .style("text-anchor", "end")
-      .text(ylabel);
-
-hxlabel=haxes.append("g")
-  .attr("class", "my_flabel")
-.append("text")
-      .attr("class", "x label")
-      .attr("class", "my_axis")
-      .attr("text-anchor", "end")
-      .attr("x", Math.round((w  )/2 ) )
-      .attr("y", h-6 )
-      .text(xlabel);
-
-htitle=haxes.append("g")
+var htitle=haxes.append("g")
   .attr("class", "my_flabel")
 .append("text")
 //      .attr("class", "x label")
@@ -731,7 +792,20 @@ htitle=haxes.append("g")
                          .domain([ycoord_edges[0], ycoord_edges[ycoord_edges.length-1]])
                          .range([h-padding, padding]);                         
 
+    
+
     if (xax){
+
+var hxlabel=haxes.append("g")
+  .attr("class", "my_flabel")
+.append("text")
+      .attr("class", "x label my_axis")
+      
+      .attr("text-anchor", "end")
+      .attr("x", Math.round((w  )/2 ) )
+      .attr("y", h-6 )
+      .text(xlabel);
+
         var xAxis = d3.svg.axis()
                       .scale(xScale)
                       .orient("bottom");
@@ -741,10 +815,23 @@ htitle=haxes.append("g")
            .attr("transform","translate(0," + (h - padding) + ")")
            .call(xAxis);              
     }else{
+        var hxlabel=false
         var xAxis=false
     }
 
     if (yax){
+
+    var hylabel=haxes.append("g")
+            .attr("class", "my_flabel")
+      .append("text")
+      .attr("class", "y label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0)
+      .attr("x", -Math.round((h-padding)/2))
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text(ylabel);
+
         var yAxis = d3.svg.axis()
                       .scale(yScale)
                       .orient("left");
@@ -754,27 +841,19 @@ htitle=haxes.append("g")
            .attr("transform", "translate(" + padding + ",0)")
            .call(yAxis);      
     }else{
+        var hylabel=false
         var yAxis=false
     }
 
-    axob={svg:svg,div:div,haxes:haxes,xScale:xScale,yScale:yScale,wcb:wcb,padding:padding,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
-
-    return axob
+    return {svg:svg,div:div,haxes:haxes,xScale:xScale,yScale:yScale,wcb:wcb,padding:padding,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
 }
 
 
 
 function pcolor(svg,tuples,m,M,num_cont,cmap){
 
-
     colours = make_cmap(cmap,m,M,num_cont);
-    
-
- //   var yScaleWidth = d3.scale.linear()
- //                        .domain([ycoord_edges[0], ycoord_edges[ycoord_edges.length-1]])
- //                        .range([-h/2, h/2]);   
-
-    // plot the pcolor
+ 
     pclr = svg.append("g")
               .attr("class","my_pcolor")
               .selectAll("rect").data(tuples)
@@ -785,10 +864,9 @@ function pcolor(svg,tuples,m,M,num_cont,cmap){
                          .attr("width", function(d){return d[3] })
                          .attr("height",function(d){return d[2] })
 
-                         .attr("fill", function(d) { return colours(d[4]);});
+                         .attr("fill", function(d) { return colours(d[4]);})
 
-
- 
+                          .attr("stroke", function(d) { return colours(d[4]);});
 
     return pclr   
 }
@@ -960,7 +1038,7 @@ function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts,
         .selectAll("g")
         .data( nested )
         .enter()
-        .append("svg:g")  // due to nesting, key is now the level
+        .append("g")  // due to nesting, key is now the level
             .attr("class",function(d) { return "level_"+d.key})
     //        .style("fill",function(d) { console.log(d.key);return colours(d.key);})
    //         .style("fill",function(d) { return colours(d.key);}) 
@@ -1260,6 +1338,19 @@ function data2xyvalue(data,xcoord,ycoord){
 return new_data;
 }
 
+function data2lines(data,xScale,yScale){
+
+    var lineData = []
+      
+    for (var i=0;i<data.value.length;i++){
+            
+        lineData.push({x:xScale(data.coord0[i]),y:yScale(data.value[i])})           
+    }
+    
+    return lineData
+}
+
+
 function data2rectangles(data,xScale,yScale){
     // Returns a 2D grid as one array of 5-tuples of (y,x,dy,dx,value) 
     // to be used to draw rectangles, with x,y the upper left corner and dy,dx the widths.
@@ -1268,13 +1359,13 @@ function data2rectangles(data,xScale,yScale){
     var ycoord_edges=data.coord0_edges,
         xcoord_edges=data.coord1_edges;
      
-
+    console.log(xScale)
     new_data = []
     for (var j=0;j<data.value.length;j++){
                         
         var row = data.value[j];
         for (var i=0;i<row.length;i++){
-            var new_item = [yScale(ycoord_edges[j+1]),xScale(xcoord_edges[i]),Math.ceil(yScale(ycoord_edges[j])-yScale(ycoord_edges[j+1])+0.2),Math.ceil(xScale(xcoord_edges[j+1])-xScale(xcoord_edges[j]) +0.2 ),row[i]]
+            var new_item = [yScale(ycoord_edges[j+1]),xScale(xcoord_edges[i]),Math.ceil(yScale(ycoord_edges[j])-yScale(ycoord_edges[j+1])),Math.ceil(xScale(xcoord_edges[j+1])-xScale(xcoord_edges[j]) ),row[i]]
 
             new_data.push(new_item)
         }

@@ -377,7 +377,8 @@ def ret_field_ops(request, project,exp, field):
 
   ops = interpret(comstr,knownobs,obchain=[] )[-1]
 
-  print ops
+ # interpret returns a string when the object is not known: change this
+ # print type(ops)
 
 #  fld = getattr(fld,method)(args)
   msg = make_json(ops(fld) )
