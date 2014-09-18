@@ -56,9 +56,9 @@
       
 .line {
   fill: none;
-  stroke: steelblue;
   stroke-width: 1.5px;
 }      
+
         </style>
 
         <title>This is my page</title>
@@ -183,8 +183,9 @@ function handle1D(div,data){
     svg=div.selectAll("svg")
 
 
-var axob=prep_axes1D(div, data,true,true,-1)
-    elms=display1D(axob,data)  
+    var axob=prep_axes1D(div, data,true,true,-1),
+        elms=display1D(axob,data)  
+
 }
 
 function rha(div,data){
@@ -456,9 +457,8 @@ function plot(svg,lineData){
 
 // plot one or more lines, using lineFunc
  
-   
         plt.append('svg:path')
-          .attr('class', 'line')
+          .attr('class', 'line')   // this class responds to steelblue style at top
           .attr('d', lineFunc(lineData))
   
     return plt
@@ -501,8 +501,99 @@ function plotu(plt,lineData){
 
 
 
+
+function plots(svg, nseries, xScale, yScale){
+    // nseries is nested arrays of lineData type arrays
+ // e.g. [  {key: 1, values: [{x:0, y:10} , {x:1, y:12}, … ] , key: 2, values: [{x:0,y:15} , {x:1,y:14}, … ]  ]
+
+
+    var linecols=['steelblue','red','green','black']
+   
+    var allplots = svg.append("g")  
+    
+    var curves = allplots.append("g")
+        .attr("class","my_plots")
+        .selectAll("g")
+        .data( nseries )  // the nested lineData type arrays
+        .enter()  // enter only the series, not their individual points
+        .append("g")  // due to nesting, key is now the series id
+            .attr("class",function(d) { return "series_"+d.key    })                 
+            .style("stroke",function(d) { return linecols[d.key]    })
+//            .style("opacity",0.5)
+
+
+    var segments=curves.append("g")
+                .selectAll("path")
+                .data(function(d) { return d.values}) // note function in data method. values is from nest (created key vs values)
+                .enter()
+          
+                .append("svg:path")
+                    .attr("d",d3.svg.line()  // this function is an iterator!
+                        .x(function(d) { return xScale(d.x)})
+                        .y(function(d) { return yScale(d.y)})
+                        )
+
+    return allplots
+}
+
+
 function prep_url(varname){
     return '/sgdata/my_project/DPO/' + varname
+}
+
+
+function findM4one(lineData){
+
+    var Mx=d3.max(lineData, function(d){return d.x;}),
+        mx=d3.min(lineData, function(d){return d.x;}),
+        My=d3.max(lineData, function(d){return d.y;}),
+        my=d3.min(lineData, function(d){return d.y;})
+
+    return {Mx:Mx,mx:mx,My:My,my:my}    
+}
+
+function findM(nseries){
+
+    var Mxs=[],
+        mxs=[],
+        Mys=[],
+        mys=[]
+
+    var Mm 
+
+ //   var lineDatas=map(nseries).values()
+
+    for (i=0;i<nseries.length;i++){
+        Mm=findM4one(nseries[i].values)
+        Mxs.push(Mm.Mx)
+        mxs.push(Mm.mx)
+        Mys.push(Mm.My)
+        mys.push(Mm.my)
+    }
+
+    return {Mx:d3.max(Mxs),mx:d3.min(mxs),My:d3.max(Mys),my:d3.min(d3.min(mys))}
+}
+
+
+function make_axes(svg,nseries){
+
+    var svg=div.selectAll("svg")
+
+    var w=svg.attr("width"),
+        h=svg.attr("height"),
+
+    var Mm=findM(nseries)
+
+    var MARGINS = {
+        top: 30,
+        right: 20,
+        bottom: 30,
+        left: 50
+    },
+    xScale = d3.scale.linear().range([MARGINS.left, w - MARGINS.right]).domain([Mm.mx,Mm.Mx]),
+    yScale = d3.scale.linear().range([h - MARGINS.top, MARGINS.bottom]).domain([Mm.my, Mm.My]);
+
+    return {xScale:xScale,yScale:yScale}
 }
 
 
@@ -619,15 +710,9 @@ haxes.selectAll(".my_y_axis")
 
 
     return {svg:svg,div:div,haxes:haxes,xScale:xScale,yScale:yScale,hxlabel:hxlabel,hylabel:hylabel,htitle:htitle,i:i}
-
-
-
-
-
 }
 
 function prep_axes1D(div, data,xax,yax,i){
-
 
     var My = data.M;
     var my = data.m;
@@ -1049,7 +1134,7 @@ function plot_contour(svg,data,ycoord,xcoord,xScale,yScale,m,M, num_cont, conts,
 
     var conts = contplot.append("g")
                 .selectAll("path")
-                .data(function(d) { return d.values}) // note function in data method
+                .data(function(d) { return d.values}) // note function in data method. values is from nest (created key vs values)
                 .enter()
           
                 .append("svg:path")
