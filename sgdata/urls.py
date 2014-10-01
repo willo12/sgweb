@@ -19,7 +19,10 @@ urlpatterns = patterns('',url(r'^$',views.index, name='index' ),
                            url(r'^(?P<project>[\w]+)/(?P<exp>[\w]+)/(?P<field>[\w]+)/method/(?P<method>[\w]+)/$', views.ret_field_method, name = 'ret_field_method'),                         
  
 
-                           url(r'^(?P<project>[\w]+)/(?P<exp>[\w\-\+]+)/(?P<field>[\w]+)/ops/$', views.ret_field_ops, name = 'ret_field_ops'),                         
+                           url(r'^(?P<project>[\w]+)/(?P<exp>[\w\-\+\.]+)/(?P<field>[\w]+)/ops/$', views.ret_field_ops_old, name = 'ret_field_ops_old'),      
+
+
+                           url(r'^(?P<project>[\w]+)/(?P<fields>[\w\-\+\.]+)/ops/$', views.ret_field_ops, name = 'ret_field_ops'),                                                    
                           url(r'^gmaps/$', views.gmaps, name = 'gmaps'),
 
                       )

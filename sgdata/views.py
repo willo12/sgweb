@@ -7,11 +7,15 @@ import numpy as np
 import spacegrids as sg
 import copy
 
+def id_op(a):
+  return a
 
 def list_ops(P,E):
 
   knownobs = init_knownobs(P,E)
   _, oplist = make_ops(knownobs)
+
+  oplist = oplist
 
   return oplist
 
@@ -29,6 +33,11 @@ def make_ops(knownobs):
     axnames=['X','Y','Z','T']
     opnames=["Prim","Integ","Mean"] 
 
+    op=sg.nop 
+    opkey="nop"
+    new_keys.append(opkey)
+    knownobs[opkey] = op
+
     for opname in opnames:
       for an in axnames:
     
@@ -37,7 +46,19 @@ def make_ops(knownobs):
         op=getattr(sg,opname)(knownobs[an])
         knownobs[opkey] = op
 
-    
+    opname="Slice"
+    for an in axnames:
+      opkey='Slice'+an+'0'
+      new_keys.append(opkey)
+      op=getattr(sg,opname)( (knownobs[an],0) )
+      knownobs[opkey] = op
+
+    node=(knownobs['X'],85,knownobs['Y'],30)  
+    op=sg.PickBasin(node)
+    opkey="PickAtlantic"
+    new_keys.append(opkey)
+    knownobs[opkey] = op
+
     return knownobs,new_keys
 
 def init_knownobs(P,E):
@@ -61,7 +82,11 @@ def interpret_exp(comstr):
  # print comstr
   if '-' in comstr:
     members=comstr.split('-')
-    return {'op':'minus','members':members[:2]}
+    if '+' in members[0]:
+#      what to do here:
+      return {'op':'plus_minus','members':members[:2]}
+    else:  
+      return {'op':'minus','members':members[:2]}
 
   elif '+' in comstr:
     members=comstr.split('+')
@@ -70,70 +95,183 @@ def interpret_exp(comstr):
   return {'op':'none','members':[comstr]}
 
 
-def interpret(comstr,knownobs,obchain=[]):
+def str_index(dlm,st):
+
+    if dlm in st:
+      return {'dlm':dlm,'index':st.index(dlm)}
+    else:
+      return {'dlm':dlm,'index':999}      
+
+def find_first(dlms,st):
+  """
+  Find which of the list of delimeters dlms occurs first in string st.
+
+  To be used in conjunction with interpret for keywords of equal rank, such as . and __
+  There, find out which one occurs first, and if any, and split with that dlm.
+  """
+  values=[str_index(dlm,st)['index'] for dlm in dlms ]
+ 
+  m=min(values)
+  if m< 999:
+    return dlms[values.index(m) ]
+  else:
+    return 
+  
+
+
+def interpret(comstr,knownobs,obchain=[], op = id_op):
     """
+    interprets objects and their attributes (methods not executed) and items (as in __getitem__)
     e.g. knownobs = {'P':P,'E':E}
+
+    obchain is used to when looking for attributes
     """
+
+# next task to build function that regrids all fields to common grid
+
+    #print obchain
+
+    if '-' in comstr:
+      mults = comstr.split('-')
+      fields = [interpret(e,knownobs,obchain=[],op=op)[-1] for e in mults ] 
+
+      if len(fields)>2:
+        print 'use - only once'
+        return
+
+      commongr = reduce(lambda x,y: x.grid*y.grid, fields)
+      fields = [f.regrid(commongr) for f in fields]      
+
+      return [fields[0] - fields[1]]
 
     if '*' in comstr:
       mults = comstr.split('*')
-      
-      return [reduce(lambda x,y:interpret(x,knownobs,obchain=[])[-1]*interpret(y,knownobs,obchain=[])[-1], mults )]
-    
+      mul_ops= [interpret(x,knownobs,obchain=[],op=op)[-1] for x in mults if x !='nop']
 
-    if '__' in comstr:
-    
-      chain = [interpret(e, knownobs,obchain=[])[-1] for e in comstr.split('__') ]
+      if len(mul_ops)>0:
+        return [reduce(lambda x,y:x*y, mul_ops )]
+      else:
+        return [knownobs['nop'],]  
+
+    if '++' in comstr:
+      # We're assuming the elements are fields
+      mults = comstr.split('++')
+
+      W = sg.Ax("exper")
+
+      fields = [interpret(e,knownobs,obchain=[],op=op)[-1] for e in mults ] 
+
+      commongr = reduce(lambda x,y: x.grid*y.grid, fields)
+      fields = [f.regrid(commongr) for f in fields]
+
+      return [sg.concatenate( fields , ax=W) ]
   
-      return [reduce( lambda x,y:x[y], chain)]
+
+    if '+' in comstr:
+      mults = comstr.split('+')
+      
+      return [reduce(lambda x,y:interpret(x,knownobs,obchain=[],op=op)[-1]+interpret(y,knownobs,obchain=[],op=op)[-1], mults )]
+
+#    elif (op is not None):
+      # this is not a compound, but we need to apply op if we've just dropped in
+
+#      print 'hier ',
+#      print comstr + '  ',
+#      print obchain
+#      print op(interpret(comstr,knownobs,obchain=[], op = None)[-1])
+#      print '----'
+#      return [ op(interpret(comstr,knownobs,obchain=[], op = None)[-1]) ]
+ 
+
+#    if '__' in comstr:
+    
+#      chain = [interpret(e, knownobs,obchain=[])[-1] for e in comstr.split('__') ]
+  
+#      return [reduce( lambda x,y:x[y], chain)]
 
 
    # print comstr          
-    if '.' in comstr:
-      split2 = comstr.split('.',1) # look at leftmost element
+#    if '.' in comstr:
+
+# ----- properties -------
+
+    dlm = find_first(['__','..'],comstr)  
+    if dlm:
+      split2 = comstr.split(dlm,1) # look at leftmost element
 
       if obchain:
-        obchain=obchain+interpret(split2[0], knownobs,obchain)
-        return interpret(split2[1], knownobs,obchain)
+        obchain.append( (interpret(split2[0], knownobs,obchain,op=op)[-1],dlm  )  )
+        return interpret(split2[1], knownobs,obchain,op=op)
         
-
       else:
         # we're at the head of the chain
         if split2[0] in knownobs:
-          obchain.append(knownobs[split2[0]])
+          obchain.append( (knownobs[split2[0]],dlm  ) )
           
         else:
-          raise Exception('Parsing error')
+          raise Exception('Parsing error for %s of type %s'%(split2[0], type(split2[0])  ))
 
-      return interpret(split2[1], knownobs,obchain)
+      return interpret(split2[1], knownobs,obchain,op=op)
 
     else:
-
+      # it is not a *, __ or . separated compound
+      # treated as a primitive element, to be interpreted either
+      # in the context of the obchain and/ or (known objects) knownobs
 
       if obchain:
-        attrs = dir(obchain[-1])
-      
-        if comstr in attrs:
-          # current piece is an attribute
-          obchain.append(getattr(obchain[-1], comstr  )  )          
-        else:
-          raise Exception('Parsing error')      
+        # if there is an obchain, we have been decending into attributes (perhaps of attributes)
 
+        # does the last element of the obchain have an attribute corresponding with the current comstr?
+        knownob = obchain[-1][0]
+        dlm = obchain[-1][1]
+
+#        print 'knownob ',
+#        print  knownob
+
+        if dlm == '..':
+
+          attrs = dir(knownob)
+      
+          if comstr in attrs:
+            # current piece is an attribute, get the value and append
+            obchain.append( (getattr(knownob, comstr  ) , dlm )  )          
+          else:
+            raise Exception('Parsing error for .: %s not attr of %s'%(comstr,knownob))  
+
+        elif dlm == '__':
+   #         print knownob[comstr]
+            try:
+              comstr = int(comstr)
+            except:
+              pass
+
+            retval = knownob[comstr]
+ 
+            if retval is None:
+             
+              knownob.load(comstr)
+           
+              retval = op(knownob[comstr])
+
+            obchain.append( (retval , dlm )  )          
+            
       else:
 
         # we're at the head and end of the chain
         if comstr in knownobs:
-          obchain.append(knownobs[comstr])        
+          # the element is a known object
+          obchain.append((knownobs[comstr], None  ) )        
 
         else:
+          # the element must be a number
           try:
             i=int(comstr)
-            obchain.append(i)          
+            obchain.append((i, None ) )          
           except ValueError:
-            obchain.append(comstr )                 
+            obchain.append( (comstr, None ) )                 
 
-
-      return obchain
+      # obchain of length 1 if no attributes are sought
+      return [e[0] for e in obchain  ]  # always extract the last element of this chain
 
 
 
@@ -143,24 +281,30 @@ def find_mirror(fld):
 #  F.value = np.flipud(F.value)
 
   grid = fld.grid
+
+
+
   if hasattr(grid[0],'axis'):
     if grid[0].axis.name == 'Z':
       fld=grid[0].flip(fld)
 
+
 #      fld.grid[0].value = -fld.grid[0].value 
  #     fld.grid[0].dual.value = -fld.grid[0].dual.value 
-
+ 
+      # make copies of z coord. This because if the fld belongs to a range of slices, mutating one field's grid directly affects the others, leading to accumulating changes to the Coord.
       yscale=1e-3
-      fld.grid[0].value = yscale*np.flipud(fld.grid[0].value )
-      fld.grid[0].dual.value = yscale*np.flipud(fld.grid[0].dual.value )
+      new_zcoord = fld.grid[0].copy(name='new_z',value=yscale*np.flipud(fld.grid[0].value)) 
+      new_zcoord.dual = fld.grid[0].dual.copy(name='new_z',value=yscale*np.flipud(fld.grid[0].dual.value ))
+
+      # grids are non-permutable, so construct via multiplication
+      fld.grid = new_zcoord*fld.grid
 
 #      fld.grid[0].dual.value = np.concatenate([np.array([fld.grid[0].dual.value[0],]), fld.grid[0].dual.value])
 
-
     elif (len(grid)>1) and (grid[1].axis.name == 'Z'):
-      fld=grid[1].flip(fld)
-
-
+#      fld=grid[1].flip(fld)
+      pass
   return fld
 
 
@@ -179,6 +323,7 @@ def make_msg(fld):
     msg["slices"] = [make_msg(e) for e in fsliced]
     msg["scoord"] = coord0.value.tolist()   
     
+    # EXIT POINT
     return msg
   
   fld = find_mirror(fld)
@@ -206,35 +351,64 @@ def make_json(msg):
   return dumps(msg)
 
 
+def execute_ops(P,opob,field):
 
-
-def get_field(project,exp, field):
-  "Field can be something like DPO-DPC"
-
-  opob = interpret_exp(exp)
-
-  D = sg.info_dict()
-  P = sg.Project(D[project])
-
+  # opob is the operation and experiment dictionary 
+  # opob['members'] are exp objects
+  # opob['members'] is a list of (str) experiment names, arising from a split
   if (opob is not None):
-    for exp in opob['members']:
-      P[exp].load(field)
-  
+    
     if (opob['op'] == 'none'):
-      fld = P[opob['members'][0]][field]
+      # for the no op, just pick the field for the 1st experiment
+      E = P[opob['members'][0]]
+      E.load(field)
+      fld = E[field]
+
+    elif   (opob['op'] == 'plus_minus'):
+      # in this case, we know that the first member contains further decomposable elements, so we interpret it.
+      sub_opob = interpret_exp(opob['members'][0])
+      left_fld = execute_ops(P,sub_opob,field)
+      E = P[opob['members'][1]]
+      E.load(field)
+      right_fld = E[field]
+
+      join_grid = left_fld.grid*right_fld.grid
+      fld = left_fld.regrid(join_grid) - right_fld.regrid(join_grid)
+
     elif (opob['op'] == 'minus'):
-      fld = P[opob['members'][0]][field] - P[opob['members'][1]][field]
+      E_left = P[opob['members'][0]]
+      E_right = P[opob['members'][1]]
+      E_left.load(field)
+      E_right.load(field)
+      fld = E_left[field] - E_right[field]
     elif (opob['op'] == 'concat'):
+      flds=[]
+      for m in opob['members']:
+        sub_opob = interpret_exp(m)
+        flds.append(execute_ops(P,sub_opob,field) )
+
       W=sg.Ax("exper")
-      fld = sg.concatenate([P[m][field] for m in opob['members'] ] , ax=W ) 
+      fld = sg.concatenate(flds , ax=W ) 
 
 
   else:
+    # if opob is None, no experiments were retrieved
     fld = None
 
+  return fld
+
+def get_field(project,exp, field):
+  '''Field can be something like DPO-DPC'''
+
+  # exp (str) is actually a compound of exp names
+  
+  D = sg.info_dict()
+  P = sg.Project(D[project])
+
+  opob = interpret_exp(exp)
  # print fld.value.shape
 
-  return sg.squeeze(fld), P, P[exp]
+  return sg.squeeze(execute_ops(P,opob, field)), P
 
 
 # --------- views ------------
@@ -272,7 +446,7 @@ def ret_field(request, project,exp, field):
 #  print project
 #  print exp
 #  print field
-  fld, _, _ = get_field(project,exp, field)
+  fld, _ = get_field(project,exp, field)
 
 
   msg = make_json(fld)
@@ -324,8 +498,6 @@ def return_list_ops(request,project):
 
   msg = list_ops(P,E)
 
- 
-
   return HttpResponse(dumps(msg))
 
 
@@ -337,7 +509,11 @@ def ret_field_method(request, project,exp, field, method):
 
   comstr = request.GET['args']
 
-  fld, P, E = get_field(project,exp, field)
+  fld, P = get_field(project,exp, field)
+  if exp in P.expers.keys():
+    E = P[exp]
+  else:
+    E = P.expers.values()[0]
 
   knownobs = {'P':P,'E':E}
 
@@ -360,7 +536,40 @@ def ret_field_method(request, project,exp, field, method):
 
 
 
-def ret_field_ops(request, project,exp, field):
+def ret_field_ops(request, project,fields):
+  """
+  project: (str) project name
+  
+  """
+
+  context = RequestContext(request)
+ 
+  D = sg.info_dict()
+  P = sg.Project(D[project])
+
+  E = P.expers.values()[0]
+
+  knownobs = build_knownobs(P,E)
+
+  if 'ops' in request.GET:
+    comstr = request.GET['ops']
+
+    ops = interpret(comstr,knownobs,obchain=[] )[-1]
+  else:
+    ops = id_op
+
+  fld = interpret(fields,knownobs,obchain=[],op=ops)[-1]
+
+
+ # interpret returns a string when the object is not known: change this
+ # print type(ops)
+
+#  fld = getattr(fld,method)(args)
+  msg = make_json(fld )
+  return HttpResponse(msg)
+
+
+def ret_field_ops_old(request, project,exp, field):
   """
   project: (str) project name
   exp: (str) experiment name 
@@ -371,7 +580,11 @@ def ret_field_ops(request, project,exp, field):
 
   comstr = request.GET['ops']
 
-  fld, P, E = get_field(project,exp, field)
+  fld, P = get_field(project,exp, field)
+  if exp in P.expers.keys():
+    E = P[exp]
+  else:
+    E = P.expers.values()[0]
 
   knownobs = build_knownobs(P,E)
 
