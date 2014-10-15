@@ -1,5 +1,8 @@
+from models import FigConf
+
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, render_to_response
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.template import RequestContext
 from json import dumps
 
@@ -146,9 +149,12 @@ def interpret(comstr,knownobs,obchain=[], op = id_op):
 
     if '*' in comstr:
       mults = comstr.split('*')
+      
+
       mul_ops= [interpret(x,knownobs,obchain=[],op=op)[-1] for x in mults if x !='nop']
 
       if len(mul_ops)>0:
+        # return a list of length 1 containing the product of the interpreted elements.
         return [reduce(lambda x,y:x*y, mul_ops )]
       else:
         return [knownobs['nop'],]  
@@ -266,11 +272,25 @@ def interpret(comstr,knownobs,obchain=[], op = id_op):
           # the element must be a number
           try:
             i=int(comstr)
-            obchain.append((i, None ) )          
+
+
           except ValueError:
-            obchain.append( (comstr, None ) )                 
+            if '.' in comstr:
+              try:
+                f=float(comstr)
+              except:
+                obchain.append( (comstr, None ) )   
+              else:
+                obchain.append( (sg.FloatMul(f), None ) )                  
+            else:            
+              obchain.append( (comstr, None ) )                 
+          else:
+
+            obchain.append((i, None ) )                      
+
 
       # obchain of length 1 if no attributes are sought
+      # don't return the dlm part of the tuples
       return [e[0] for e in obchain  ]  # always extract the last element of this chain
 
 
@@ -345,10 +365,8 @@ def make_msg(fld):
   return msg
   
 def make_json(msg):
- 
-  msg = make_msg(msg)
 
-  return dumps(msg)
+  return dumps(make_msg(msg))
 
 
 def execute_ops(P,opob,field):
@@ -481,8 +499,9 @@ def list_project(request,project):
   P = sg.Project(D[project])
   expers = P.expers.keys()
   axes = [ax.name for ax in P.expers.values()[0].axes]
+  fields = [P.expers[e].available() for e in expers]
 
-  msg = {"expers":expers, "axes":axes}
+  msg = {"expers":zip(expers,fields), "axes":axes}
 
   return HttpResponse(dumps(msg))
 
@@ -598,9 +617,84 @@ def ret_field_ops_old(request, project,exp, field):
   return HttpResponse(msg)
 
 
+def get_fig_conf(request,fig_id):
+
+  try:
+    fig = FigConf.objects.get(id=fig_id)
+  except FigConf.DoesNotExist:
+    raise Http404
 
 
+  args0=['mkChkExp','mkChkFld','adChkExp','adChkFld','selpc','smag','Op1','Op2','Op3','cycle3D','contog','cmap','kmt','Submit']
 
+  args1=[unpack(fig.mkChkExp),unpack(fig.mkChkFld),unpack(fig.adChkExp),unpack(fig.adChkFld),fig.selpc,fig.smag,fig.Op1,fig.Op2,fig.Op3,fig.cycle3D,fig.contog,fig.cmap,fig.kmt,fig.Submit]
+
+  print args1
+
+  msg = dumps([args0,args1] )
+  return HttpResponse(msg)
+
+
+@csrf_exempt
+def save_fig(request):
+
+  mkChkExp = request.POST.getlist('expchecks')
+  mkChkFld =  request.POST.getlist('checkFSL')
+
+  adChkExp = request.POST.getlist('expradios')
+  adChkFld = request.POST.getlist('radFSL')
+
+  selpc = request.POST['selpc']
+  smag = request.POST['smag']
+
+  Op1 = request.POST['Op1']
+  Op2 = request.POST['Op2']
+  Op3 = request.POST['Op3']    
+
+  try:
+    cycle3D = request.POST['cycle3D']
+  except:
+    cycle3D = 'None'
+
+  try:
+    contog = request.POST['contog']
+    if (contog == 'True'):
+      contog = True
+    else:
+      contog = False  
+  except:
+    contog = False
+
+  try:
+    cmap = request.POST['cmap']
+  except:
+    cmap = 'False'
+
+  try:
+    kmt = request.POST['kmt']
+    if (kmt == 'True'):
+      kmt = True
+    else:
+      kmt = False  
+  except:
+    kmt = False
+
+  try:
+    Submit = request.POST['submitHidden']
+  except:
+    Submit = False
+    
+  f = FigConf(mkChkExp=pack(mkChkExp),mkChkFld=pack(mkChkFld),adChkExp=pack(adChkExp),adChkFld=pack(adChkFld),selpc=selpc,smag=smag,Op1=Op1,Op2=Op2,Op3=Op3,cycle3D=cycle3D,contog=contog,cmap=cmap,kmt=kmt,Submit=Submit)
+
+  f.save()
+
+  return HttpResponseRedirect('/sgdata/')
+
+def pack(L,sep='**'):
+  return sep.join(L)
+
+def unpack(packstr,sep='**'):
+  return packstr.split(sep)
 
 def gmaps(request):
 	context = RequestContext(request)
