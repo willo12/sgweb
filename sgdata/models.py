@@ -4,6 +4,10 @@ from django.db import models
 
 class FigConf(models.Model):
 
+#    user
+#    title = models.CharField(max_length=100, unique=True)
+#    posted = models.DateField(db_index=True, auto_now_add=True)
+#    caption = models.TextField()
     mkChkExp = models.CharField(max_length=600)
     mkChkFld = models.CharField(max_length=100)
     adChkExp = models.CharField(max_length=600)

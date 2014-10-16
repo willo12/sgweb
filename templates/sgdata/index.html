@@ -95,7 +95,11 @@ canvas {
 <body>
 <h1>Data </h1>
    
- 
+ <ul>
+ {% for fc in FigConf %}
+    <li> <div class="FigID" id="{{fc.id}}" >{{fc.selpc}} </div></li>
+{% endfor %}
+ </ul>
     
 <script type="text/javascript">
 
@@ -141,18 +145,22 @@ function figConfig(ids,values){
 
 }
 
-function figFromId(id){
+function figFromId(div,id){
     var url="/sgdata/get_fig/"+id
+    var addDiv
+
     d3.json(url,function(data){
         var fConf=new figConfig(data[0],data[1]) 
         console.log(fConf)
-        createFig(fConf)     
+        addDiv=createFig(div,fConf)     
     })    
+
+    return addDiv
 }
 
 //var fConf=new figConfig(['mkChkExp','mkChkFld','adChkExp','adChkFld','selpc','smag','Op1','Op2','Op3','contog',"cycle3D",'cmap','kmt','Submit'  ],[['DPO'],['O_temp'],['DPC'],['O_temp'],'pcolor','1','MeanX','MeanY','nop' ,true,"5",'BluesReds' ,false ,true ])
 
-var cleanConf=new figConfig(['Submit'],[true])
+var cleanConf=new figConfig(['Submit'],[false])
 
 //createFig(fConf)
 
@@ -160,21 +168,43 @@ var cleanConf=new figConfig(['Submit'],[true])
 
 //createFig(cleanConf)
 
- figFromId(4)
+var newFigDiv=d3.select("body").append("div")
 
-function createFig(fConf){
+
+d3.select("body").append("text")
+    .attr("id","addbut")
+    .text("New Fig")
+    .on("click", function(){createFig(newFigDiv,cleanConf)})
+
+ // figFromId(4)
+
+console.log("Scanning page")
+scanPage(d3.select("body"))
+
+
+function scanPage(div){
+    d3.selectAll(".FigID")
+      .each(function(){
+          
+          figFromId(d3.select(this),this.id)
+
+      })
+
+}
+
+
+function createFig(div,fConf){
                       
-    var div=d3.select("body")
-          .append("div")
-          .attr("id","yo")
+//    var div=d3.select("body")
+//          .append("div")
+//          .attr("id","yo")
 
     var ctx;
-    var imageObj = new Image();
 
     var divPlot=div
-          .append("div")
-          .attr("id","plots")
-          .style("height",h+2*padding+"px")
+                  .append("div")
+                  .attr("id","plots")
+                  .style("height",h+2*padding+"px")
 
     var canvas = divPlot.append("canvas")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
@@ -238,8 +268,11 @@ function createFig(fConf){
                     .attr("method","post")
                     .attr("action","/sgdata/save_fig/")
 
+
+
             var idFld=form.append("input")
                          .attr("type","hidden")
+                         .attr("name","idHidden")
 
             idFld.attr("value",fConf.fill("id",-1))
 
@@ -435,10 +468,25 @@ function createFig(fConf){
             .attr("type","submit")
             .attr("name","submit")
             .attr("value","save")
+
+        butDiv.append("text")
+            .attr("id","delbut")
+            .text("Delete")
+          
+            .attr("name","delbut")
+            .on("click",function(){ 
+                var id=div.attr("id")
+                if (id!='-1'){ 
+                    var url='/sgdata/del_fig/'+id
+                    d3.json(url,function(data){console.log("deleted "+data)})
+                }
+                div.remove()
+            })
  
         })
     }
 
+return div
 }
 
 function fieldInfo(div,value){
@@ -835,7 +883,7 @@ function doPlots(div,nseries,title,xlabel,ylabel){
     
     svg.select('.my_plot').selectAll("rect").remove()
 
-    var canvas=d3.select("canvas"),
+    var canvas=div.select("canvas"),
         ctx = canvas.node().getContext("2d")
 
     ctx.clearRect( 0 , 0 , canvas.attr("width") , canvas.attr("height") );
@@ -1205,13 +1253,14 @@ function makeUpdateCmap(data,bigDiv,num_cont){
    function func(div,map){
         
        var svg=bigDiv.select("svg")
+       var canvas=bigDiv.select("canvas")
     
        var colours=make_cmap(map,data.m,data.M,num_cont);
 
        
        if (bigDiv.select(".plTypeDiv").select(".selpcolor")[0][0].value=='image'){
            bigDiv.select('.my_plot').selectAll("rect").remove()
-           doImage(svg,data,colours) 
+           doImage(svg,canvas,data,colours) 
        }else{
            updateColors(svg,colours)
        }
@@ -1369,6 +1418,7 @@ function display2D(axob,data,fConf){
         but
 
     var svg=axob.svg
+    var canvas=axob.div.select("canvas")
 
     var num_col=30,
         extraDiv=axob.div.select(".extraDiv")
@@ -1396,7 +1446,7 @@ function display2D(axob,data,fConf){
     if (plotType=='image'){
         axob.svg.selectAll(".series").remove();
         axob.svg.select('.my_plot').selectAll("rect").remove()
-        elms = elms.concat(doImage(svg,data,colours))
+        elms = elms.concat(doImage(svg,canvas,data,colours))
     }else{
         elms = elms.concat(doPcolor(axob,data,colours))        
     }
@@ -1556,9 +1606,11 @@ function my_kmt(axob,data){
 };
 
 
-function doImage(svg,data,colours){
+function doImage(svg,canvas,data,colours){
 
 //    var colours=make_cmap('GreenYellow',data.m,data.M,24),
+
+    var imageObj = new Image();
 
     xmax = data.value[0].length,
     ymax = data.value.length;
@@ -1572,8 +1624,7 @@ function doImage(svg,data,colours){
         .domain([data.coord0[0], data.coord0[data.coord0.length-1]])
         .range([ymax,0]);
 
-    d3.select("canvas")
-        .attr("width", xmax)
+    canvas.attr("width", xmax)
         .attr("height", ymax)
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
         .call(drawImage);
@@ -1582,7 +1633,8 @@ function doImage(svg,data,colours){
   // Compute the pixel colors; scaled by CSS.
     function drawImage(canvas) {
         var i,j
-        ctx = canvas.node().getContext("2d");
+
+        var ctx = canvas.node().getContext("2d");
         var img = ctx.createImageData(xmax, ymax);
         for (var y = 0, p = -1; y < ymax; ++y) {
             for (var x = 0; x < xmax; ++x) {
@@ -1605,7 +1657,7 @@ function doImage(svg,data,colours){
         imageObj.src = canvas.node().toDataURL();
     }
 
-    return [ctx,]
+    return []
 }
 
 function doPcolor(axob,data,colours){

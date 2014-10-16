@@ -4,6 +4,7 @@ from sgdata import views
 
 urlpatterns = patterns('',url(r'^$',views.index, name='index' ),  
 	                      url(r'^save_fig/$',views.save_fig,name='save_fig'),
+	                      url(r'^del_fig/(?P<fig_id>[\w]+)$',views.del_fig,name='del_fig'),
 	                      url(r'^get_fig/(?P<fig_id>[\w]+)$',views.get_fig_conf,name='get_fig_conf'),	                      
                           url(r'^(?P<project>[\w]+)/(?P<exp>[\w\-\+]+)/(?P<field>[\w]+)$', views.ret_field, name = 'ret_field'),
 

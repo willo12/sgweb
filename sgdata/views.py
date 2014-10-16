@@ -454,7 +454,7 @@ def index(request):
 
 #  print interpret(comstr,knownobs,obchain=[] )
  
-  return render_to_response('sgdata/index.html', context)
+  return render_to_response('sgdata/index.html',{'FigConf':FigConf.objects.all()}, context)
 
 def ret_field(request, project,exp, field):
 
@@ -625,14 +625,44 @@ def get_fig_conf(request,fig_id):
     raise Http404
 
 
-  args0=['mkChkExp','mkChkFld','adChkExp','adChkFld','selpc','smag','Op1','Op2','Op3','cycle3D','contog','cmap','kmt','Submit']
+  args0=['mkChkExp','mkChkFld','adChkExp','adChkFld','selpc','smag','Op1','Op2','Op3','cycle3D','contog','cmap','kmt','Submit','id']
 
-  args1=[unpack(fig.mkChkExp),unpack(fig.mkChkFld),unpack(fig.adChkExp),unpack(fig.adChkFld),fig.selpc,fig.smag,fig.Op1,fig.Op2,fig.Op3,fig.cycle3D,fig.contog,fig.cmap,fig.kmt,fig.Submit]
+  args1=[unpack(fig.mkChkExp),unpack(fig.mkChkFld),unpack(fig.adChkExp),unpack(fig.adChkFld),fig.selpc,fig.smag,fig.Op1,fig.Op2,fig.Op3,fig.cycle3D,fig.contog,fig.cmap,fig.kmt,fig.Submit,fig_id]
 
   print args1
 
   msg = dumps([args0,args1] )
   return HttpResponse(msg)
+
+
+
+
+
+@csrf_exempt
+def del_fig(request,fig_id):
+
+    if fig_id !=-1:
+      try: 
+        f = FigConf.objects.get(id=fig_id)
+
+        f.delete()
+      except FigConf.DoesNotExist:
+        fig_id=-1
+
+
+   
+
+    return HttpResponse(dumps(fig_id))
+
+
+
+
+
+
+
+
+
+
 
 
 @csrf_exempt
@@ -684,9 +714,26 @@ def save_fig(request):
   except:
     Submit = False
     
-  f = FigConf(mkChkExp=pack(mkChkExp),mkChkFld=pack(mkChkFld),adChkExp=pack(adChkExp),adChkFld=pack(adChkFld),selpc=selpc,smag=smag,Op1=Op1,Op2=Op2,Op3=Op3,cycle3D=cycle3D,contog=contog,cmap=cmap,kmt=kmt,Submit=Submit)
+  try:
+    idHidden = int(request.POST['idHidden'])
+  except:
+    idHidden = -1    
 
-  f.save()
+  if idHidden == -1:
+    f = FigConf(mkChkExp=pack(mkChkExp),mkChkFld=pack(mkChkFld),adChkExp=pack(adChkExp),adChkFld=pack(adChkFld),selpc=selpc,smag=smag,Op1=Op1,Op2=Op2,Op3=Op3,cycle3D=cycle3D,contog=contog,cmap=cmap,kmt=kmt,Submit=Submit)
+
+    f.save()
+  else:
+    try: 
+      f = FigConf.objects.get(id=idHidden)
+
+      f.mkChkExp=pack(mkChkExp);f.mkChkFld=pack(mkChkFld);f.adChkExp=pack(adChkExp);f.adChkFld=pack(adChkFld);f.selpc=selpc;f.smag=smag;f.Op1=Op1;f.Op2=Op2;f.Op3=Op3;f.cycle3D=cycle3D;f.contog=contog;f.cmap=cmap;f.kmt=kmt;f.Submit=Submit;
+      f.save()
+    except FigConf.DoesNotExist:
+      pass
+
+
+
 
   return HttpResponseRedirect('/sgdata/')
 
