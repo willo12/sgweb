@@ -161,6 +161,12 @@ function createFig(div,fConf){
                 .attr("value",fConf.fill("Submit",false))
                 .attr("name","submitHidden")                     
 
+            row=form.append("div")
+                    .attr("class","row")
+
+            var butDiv=form.append("div")
+                .attr("class","butDiv col-sm-12 col-md-12 col-xs-12")
+
             var expDiv=form.append("div")
                 .attr("class","expDiv")
     
@@ -173,12 +179,12 @@ function createFig(div,fConf){
             var extraDiv=form.append("div")
                  .attr("class","extraDiv")
 
+            
+
             var fs=extraDiv.append("fieldset")
             fs.append("legend")
               .text("Additional controls")
 
-            var butDiv=form.append("div")
-                .attr("class","butDiv")
 
             fs=expDiv.append("fieldset")
             fs.append("legend")
@@ -205,17 +211,17 @@ function createFig(div,fConf){
                     .attr("class","form-group")
 
             fg.append("label")
-                .attr("class","control-label col-sm-1")
+                .attr("class","control-label col-xs-1 col-sm-1")
                 .attr("for","selpc") 
                 .text("Plot Type")   
 
             
 
-            makeDropdown(fg.append("div").attr("class","col-sm-2"),['pcolor','image'],fConf.fill("selpc","image"),pcolChanged)
-                .attr("class","selpcolor form-control input-sm")
+            makeDropdown(fg.append("div").attr("class","col-xs-3 col-sm-2"),['pcolor','image'],fConf.fill("selpc","image"),pcolChanged)
+                .attr("class","selpcolor form-control input-sm ")
                 .attr("id","selpc")
                 .attr("name","selpc")
-                
+//                .attr("placeholder","col-xs-4")
 
             var url="/sgdata/projects/my_project/list_ops/"
             d3.json(url,function(data){ 
@@ -224,36 +230,44 @@ function createFig(div,fConf){
                 fs.append("legend")
                   .text("Server operations on data")
 
+
                 fg=fs.append("div")
                     .attr("class","form-group")
 
+
                 fg.append("label")
-                    .attr("class","control-label col-sm-1")
+                    .attr("class","control-label col-xs-2 col-sm-2")
                     .attr("for","smag")
                     .text("Multiply")    
 
-                makeDropdown(fg.append("div").attr("class","col-sm-2"),['1e-8','1e-6','1e-4','1e-2','1','1e2','1e4','1e6','1e8'],fConf.fill("smag","1"),opChanged)
+                makeDropdown(fg.append("div").attr("class","col-xs-2 col-sm-2"),['1e-8','1e-6','1e-4','1e-2','1','1e2','1e4','1e6','1e8'],fConf.fill("smag","1"),opChanged)
                     .attr("class","selmagn  form-control input-sm")
                     .attr("id","smag")
                     .attr("name","smag")
 
-//                fs.append("br")
+                fs.append("br")
+
+                var opLbls = ["First","Second","Third"]
 
                 for (var i=1;i<4;i++)
                 {
-                        //            fs.append("br")
+                                    fs.append("br")
+
+                    
+
                     fg=fs.append("div")
                         .attr("class","form-group")
 
-     //               fg.append("label")
-     //                   .attr("class","control-label col-sm-1")                
-     //                   .attr("for","Op"+i)
-     //                   .text("")
+                    fg.append("label")
+                        .attr("class","control-label col-sm-2")                
+                        .attr("for","Op"+i)
+                        .text(opLbls[i-1])
 
-                    makeDropdown(fg.append("div").attr("class","col-sm-2"),data,fConf.fill("Op"+i,"nop"),opChanged)
+                    makeDropdown(fg.append("div").attr("class","col-xs-3 col-sm-3 col-md-2"),data,fConf.fill("Op"+i,"nop"),opChanged)
                         .attr("class","form-control input-sm selop"+i)
                         .attr("id","Op"+i)
                         .attr("name","Op"+i)
+                        
                 }
 
 
@@ -339,20 +353,30 @@ function createFig(div,fConf){
             }
 
     // PLOT BUTTON
-        butDiv.append("text")
+
+
+        butDiv.append("button")
+            .attr("href","")
+            .attr("type","button")
             .attr("id","checkbut")
+            .attr("class","btn btn-default")
             .text("Plot")
             .on("click", butPressed)
 
+
+
         butDiv.append("button")
             .attr("id","savebut")
+            .attr("class","btn btn-default")
             .text("Save")
             .attr("type","submit")
             .attr("name","submit")
             .attr("value","save")
 
-        butDiv.append("text")
+        butDiv.append("a")
+            .attr("href","")
             .attr("id","delbut")
+            .attr("class","btn btn-default")
             .text("Delete")
           
             .attr("name","delbut")
@@ -470,18 +494,25 @@ function checkChanged(div,expFields,i,checked,initVal){
 	//    var h=div.select(".checkDiv"+i)
         // the value argument is needed for io in fieldSel    
 
-        var h=div.select(".checkDiv"+i).append("div")
-             .attr("name","sel_"+expFields[0])
+        var h=div.select(".checkDiv"+i)
+
+
+             .append("div")
+                 .attr("name","sel_"+expFields[0])
+//                 .attr("class","col-xs-4 col-sm-4 col-sd-4")
 
         h.append("label")
          .attr("for","selFld")
-         .text("Show Field")
+         .text("Fld")
+ //        .attr("class","control-label col-xs-2 col-sm-2 col-sd-2")
 
 	    fieldSel(h, expFields,initVal)
-	            .attr("class","fsl"+i)
+	            .attr("class","fsl"+i+"")
                 .attr("id","selFld")
                 .select(".varsel")
                 .attr("name","checkFSL")
+                .attr("class","varsel ")
+             
 
         console.log("checking this one")               
     }else{
@@ -510,6 +541,7 @@ function makeChecks(div,data,action,func,type,name,cls,initData,initFuncVals){
     .data(data)
     .enter()
     .append("div")
+    .attr("class","col-xs-3")
     .attr("class",function(d,i){return "checkDiv"+i} )
     .append("span")
     .attr("class","checkSpan")
@@ -1220,6 +1252,9 @@ function rha(div,data,fConf){
     padding=40;
 
     // extra control
+    var destDiv=div.select(".butDiv")
+              
+
     var extraDiv=div.select(".extraDiv")
                 .select("fieldset")
 
@@ -1231,13 +1266,20 @@ function rha(div,data,fConf){
         // this puts the axes on the figure AND returns axob
         axob=prep_axes(div, data.slices[0],padding,wcb,true,true,-1)
 
-        extraDiv.append("label")
-                .attr("for","cycle3D")
-                .attr("class","cyclebut")
-                .text("Slice")
+
+
+  //      var fg=extraDiv.append("div")
+  //                      .attr("class","form-group")
+
+ //       fg.append("label")
+//                .attr("for","cbut")
+//                .attr("class","cyclebut control-label col-xs-2 col-sm-2 col-md-2")
+  //              .text("Slice")
+
+ //       console.log(fConf.fill("cycle3D","0"))
 
         // display button allowing slicing through a 3D field. Last arg initial slice
-        addcycler(axob,data,"text",display2D,".extraDiv",fConf.fill("cycle3D","0"),fConf)
+        addcycler(axob,data,display2D,destDiv,fConf.fill("cycle3D","0"),fConf)
             .attr("id","cycle3D")
             .attr("name","cycle3D")
 
@@ -1304,21 +1346,25 @@ function display2D(axob,data,fConf){
     var canvas=axob.div.select("canvas")
 
     var num_col=30,
-        extraDiv=axob.div.select(".extraDiv")
-                         .select("fieldset")
+//        destDiv=axob.div.select(".extraDiv")
+//                         .select("fieldset")
+        destDiv=axob.div.select(".butDiv")
+                       
+
+
 
     // Colormap Dropdown into extraDiv fieldset
 
-    fg=extraDiv.append("div")
-        .attr("class","tempbut form-group")
+//    fg=destDiv.append("div")
+//        .attr("class","tempbut form-group")
 
 
-    fg.append("label")
-            .attr("for","cmap")
-            .attr("class","tempbut control-label col-sm-2")
-            .text("Colormap")
+ //   fg.append("label")
+//            .attr("for","cmap")
+//            .attr("class","tempbut control-label col-sm-2")
+//            .text("Colormap")
 
-    makeDropdown(fg.append("div").attr("class","col-sm-2"),d3.keys(cmaps),fConf.fill("cmap",""),makeUpdateCmap(data,axob.div,num_col))
+    makeDropdown(destDiv.append("div").attr("class","col-xs-2  col-sm-2  col-md-2"),d3.keys(cmaps),fConf.fill("cmap",""),makeUpdateCmap(data,axob.div,num_col))
     .attr("class","tempbut form-control input-sm")
     .attr("name","colormap")
     .attr("id","cmap")
@@ -1341,14 +1387,16 @@ function display2D(axob,data,fConf){
     axob.svg.selectAll(".my_colorbar").remove()
     elms = elms.concat(colorbar(axob.svg,data.m,data.M,30, axob.wcb,axob.padding,data.units,colours) );
 
+    fg=destDiv.append("div")
+        .attr("class","tempbut form-group")
 
     // add toggle for contour overlay
-    extraDiv.append("label")
+    destDiv.append("label")
             .attr("for","contog")
-            .attr("class","tempbut")
+            .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
             .text("Contours")
  
-    elms = elms.push(addtoggle(axob,extraDiv,data,handle_more_data,"True","False","click",fConf.fill("contog",false) ).attr("id","contog").attr('name','contog'))
+    elms = elms.push(addtoggle(axob,fg.append("div").attr("class","col-xs-2 col-sm-2 col-md2"),data,handle_more_data,"True","False","click",fConf.fill("contog",false) ).attr("id","contog").attr('name','contog').attr("class"," form-control"))
 
     return elms
 }
@@ -1428,9 +1476,11 @@ function cycler(w,wmax,axob,data,but,func,fConf){
 
     w=(w+1)%wmax
 
-//    console.log(data.slices[w])
+    console.log(w)
 
-    but.text(data.scoord[w])
+    console.log(data.slices[w])
+
+    but.text("slice "+data.scoord[w])
 
     but.select("input")
        .attr("value",w)
@@ -1439,7 +1489,7 @@ function cycler(w,wmax,axob,data,but,func,fConf){
 };
 
 
-function addcycler(axob,data,tag,func,divName,initSlice,fConf){
+function addcycler(axob,data,func,div,initSlice,fConf){
    // adds an element such as button to cycle through 3D field 
    // tag is usually "button"
    // func is usually display2D
@@ -1449,12 +1499,13 @@ function addcycler(axob,data,tag,func,divName,initSlice,fConf){
         wmax=data.slices.length,
         but
 
-    var subDiv=axob.div.select(divName)
-                   .select("fieldset")    
+    var subDiv=div
 
-    but=subDiv.append(tag)
-    but.attr("class","cyclebut")
-//        .text("cycle from "+ data.scoord[0])
+    but=subDiv.append("button")
+              .attr("type","button")
+              .attr("id","cbut")
+    but.attr("class","cyclebut btn btn-default")
+//        .text("cycle from "+ data.scoord[0]) 
 
     var valueFld=subDiv.append("input")
        .attr("type","hidden")
@@ -1476,6 +1527,7 @@ function addcycler(axob,data,tag,func,divName,initSlice,fConf){
         w=clr[0]   
         valueFld.attr("value",w)            
     });
+
     return valueFld
 }
 
