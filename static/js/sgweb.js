@@ -76,7 +76,10 @@ function createFig(div,fConf){
 //          .append("div")
 //          .attr("id","yo")
 
-    var ctx;
+    var ctx,
+        id=div.attr("id")
+
+    // setting the id this way is an unfortunate hack to allow the delete button code to find this id 
 
     div=div.append("div")
            .attr("class","container")
@@ -84,6 +87,7 @@ function createFig(div,fConf){
            .attr("class","row")
            .append("div")
            .attr("class","col-xs-8 col-sm-8 col-md-8") 
+           .attr("id",id)
 
     var divPlot=div
                   .append("div")
@@ -231,6 +235,15 @@ function createFig(div,fConf){
 //        initChecks(fs,['DPO'],".checkel",['O_psi'],checkChanged)
 
             addChecks(fs,"change",radioChanged,"checkbox","expradios","radioel",fConf.fill('adChkExp',[]),fConf.fill('adChkFld',[]))
+
+    fs.select(".mainCheck")
+    .selectAll(".checkSpan")
+      .append("span")
+      
+      .text(function(d){return ' '+d[0]+' '})
+
+
+
 
             fs=plTypeDiv.append("fieldset") 
             fs.append("legend")
@@ -577,7 +590,7 @@ function makeChecks(div,data,action,func,type,name,cls,initData,initFuncVals){
     .attr("class",function(d,i){return "checkDiv"+i} )
     .append("span")
     .attr("class","checkSpan")
-    .text(function(d){return d[0]+' '})
+//    .text(function(d){return d[0]+' '})
     .append("input")
     .attr("class",cls)
     .attr("type",type)
@@ -1343,7 +1356,7 @@ function rha(div,data,fConf){
 //        .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
 //        .text("geography")
 
-    d3.json(prep_url('P__'+exp+'__G_kmt',ops="nop"),function(error,data){
+    d3.json(prep_url('P__'+exp+'__$kmt$',ops="nop"),function(error,data){
     if (error){ return console.warn(error)};
 
 

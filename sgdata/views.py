@@ -120,6 +120,17 @@ def find_first(dlms,st):
   else:
     return 
   
+def field_alias(knownob,comstr):
+
+  if comstr == '$kmt$':
+    for kmtAttempt in ['G_kmt','kmt']:
+      if kmtAttempt in knownob.available():
+        break
+    return kmtAttempt
+  else:
+    return comstr
+
+
 
 
 def interpret(comstr,knownobs,obchain=[], op = id_op):
@@ -133,6 +144,7 @@ def interpret(comstr,knownobs,obchain=[], op = id_op):
 # next task to build function that regrids all fields to common grid
 
     #print obchain
+
 
     if '-' in comstr:
       mults = comstr.split('-')
@@ -250,14 +262,13 @@ def interpret(comstr,knownobs,obchain=[], op = id_op):
               comstr = int(comstr)
             except:
               pass
-
+            
             retval = knownob[comstr]
  
             if retval is None:
-             
-              knownob.load(comstr)
-           
-              retval = op(knownob[comstr])
+
+              knownob.load(field_alias(knownob,comstr))                
+              retval = op(knownob[field_alias(knownob,comstr)])
 
             obchain.append( (retval , dlm )  )          
             
@@ -379,6 +390,7 @@ def execute_ops(P,opob,field):
     if (opob['op'] == 'none'):
       # for the no op, just pick the field for the 1st experiment
       E = P[opob['members'][0]]
+      field = field_alias(E,field)
       E.load(field)
       fld = E[field]
 
@@ -387,6 +399,7 @@ def execute_ops(P,opob,field):
       sub_opob = interpret_exp(opob['members'][0])
       left_fld = execute_ops(P,sub_opob,field)
       E = P[opob['members'][1]]
+      field = field_alias(E,field)      
       E.load(field)
       right_fld = E[field]
 
