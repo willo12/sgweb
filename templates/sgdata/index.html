@@ -25,23 +25,30 @@
 <script src="{% static "js/sgweb.js" %}"> </script>
 
 <style type="text/css">
-    h1 {
-        font-family: sans-serif;
-        color: lime;
-    }
+    p{margin: 30px;}
 </style>
 
 
-
-<title>This is my page</title>
+<title>Prototype sgweb data viewer app by W. P. Sijp</title>
     
 </head>
 <body>
-<h1>Data </h1>
-   
+<h1 align="center">sgweb dataviewer app prototype </h1>
+ 
+
+<p>
+This is a prototype for a web based Netcdf viewer. Figures persist on web pages when the "save" is pressed. This saves the figure configuration to a database, as defined by the control form below the figure (press "Show Controls" button). Figures are then defined as configurations in the database. On loading these configurations, figures are built by loading Netcdf data from disk, and performing server-side operations, according to the figure configuration. 
+</p>
+
+<p>
+Figure displays are update by pressing the "Plot" button. The data files in the project are shown under "Data files in project". To view a particular dataset, click the left tick box next to that dataset name. Then, select the desired field from the drop down menu that appears. To substract a field belonging to (another) dataset, tick the right column tick box.  The upper left dropdown menu provides colormaps. Data can be multiplied by a factor selected from the multiple dropdown under "Server operations on data". A succession of three operations is selected from menus, where "nop" indicates no operation and the op labelled "First" is performed first. 
+
+
+</p>
+
  <ul>
  {% for fc in FigConf %}
-    <li> <div class="FigID" id="{{fc.id}}" >{{fc.selpc}} </div></li>
+    <li> <div class="FigID" id="{{fc.id}}" >Figure {{forloop.counter}} </div></li>
 {% endfor %}
  </ul>
     
@@ -51,10 +58,16 @@ var cleanConf=new figConfig(['Submit'],[false])
 
 var newFigDiv=d3.select("body").append("div")
 
-d3.select("body").append("text")
+
+var contBut=d3.select("body").append("button")
+    .attr("href","")
+    .attr("type","button")
     .attr("id","addbut")
-    .text("New Fig")
-    .on("click", function(){createFig(newFigDiv,cleanConf)})
+    .attr("class","btn btn-default")
+    .text("Create New Figure")
+    .on("click", function(){createFig(newFigDiv,cleanConf)});
+
+
 
 scanPage(d3.select("body"))
 
