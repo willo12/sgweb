@@ -339,7 +339,7 @@ def find_mirror(fld):
   return fld
 
 
-def make_msg(fld):
+def make_msg(fld,expname='None'):
  
   M = np.nanmax(fld.value)
   m = np.nanmin(fld.value)
@@ -353,7 +353,7 @@ def make_msg(fld):
     
     msg["slices"] = [make_msg(e) for e in fsliced]
     msg["scoord"] = coord0.value.tolist()   
-    
+
     # EXIT POINT
     return msg
   
@@ -364,7 +364,7 @@ def make_msg(fld):
   except:
     pass
 
-  msg = {'name':fld.name,'lname':fld.long_name,'value':fld.value.tolist() ,'M':str(M),'m':str(m) , 'ndim':ndim, 'units':fld.units }
+  msg = {'name':fld.name,'lname':fld.long_name,'value':fld.value.tolist() ,'M':str(M),'m':str(m) , 'ndim':ndim, 'units':fld.units,'expname':expname }
 
   for i,coord in enumerate(fld.grid):
     msg['coord'+str(i)] = fld.grid[i].value.tolist()
@@ -375,9 +375,9 @@ def make_msg(fld):
 
   return msg
   
-def make_json(msg):
+def make_json(msg,expname='None'):
 
-  return dumps(make_msg(msg))
+  return dumps(make_msg(msg,expname))
 
 
 def execute_ops(P,opob,field):
@@ -590,14 +590,18 @@ def ret_field_ops(request, project,fields):
   else:
     ops = id_op
 
-  fld = interpret(fields,knownobs,obchain=[],op=ops)[-1]
+  I=interpret(fields,knownobs,obchain=[],op=ops)
 
+  
+
+  fld = I[-1]
+  expname=I[-2].name
 
  # interpret returns a string when the object is not known: change this
  # print type(ops)
 
 #  fld = getattr(fld,method)(args)
-  msg = make_json(fld )
+  msg = make_json(fld,expname )
   return HttpResponse(msg)
 
 

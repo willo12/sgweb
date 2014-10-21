@@ -43,6 +43,7 @@ function figFromId(div,id){
     var url="/sgdata/get_fig/"+id
     var addDiv
 
+ 
     d3.json(url,function(data){
         var fConf=new figConfig(data[0],data[1]) 
         console.log(fConf)
@@ -1356,14 +1357,9 @@ function rha(div,data,fConf){
 //        .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
 //        .text("geography")
 
-    d3.json(prep_url('P__'+exp+'__$kmt$',ops="nop"),function(error,data){
-    if (error){ return console.warn(error)};
+//    console.log(axob)
 
 
-    addtoggle(axob,destDiv,data,my_kmt,"hiddenKmt","No Geogr","geography","click", fConf.fill("kmt" ,false) )
-                     .attr("id","kmt")
-                    .attr("name","kmt")
-                     .attr("class","btn btn-default tempbut")})
             
 //    var exFldSpan=extraDiv.append("span")
 //                         .attr("class","tempbut") 
@@ -1447,6 +1443,16 @@ function display2D(axob,data,fConf){
 //            .attr("for","contog")
 //            .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
 //            .text("Contours")
+
+    d3.json(prep_url('P__'+data.expname+'__$kmt$',ops="nop"),function(error,data){
+    if (error){ return console.warn(error)};
+
+
+    addtoggle(axob,destDiv,data,my_kmt,"hiddenKmt","No Geogr","geography","click", fConf.fill("kmt" ,false) )
+                     .attr("id","kmt")
+                    .attr("name","kmt")
+                     .attr("class","btn btn-default tempbut")
+    })
  
     elms = elms.push(addtoggle(axob,destDiv,data,handle_more_data,"hiddenCont","Conts off","Contours","click",fConf.fill("contog",false) )
                .attr("id","contog").attr('name','contog').attr("class","btn btn-default  tempbut"))
