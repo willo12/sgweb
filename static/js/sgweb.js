@@ -78,9 +78,16 @@ function createFig(div,fConf){
 
     var ctx;
 
+    div=div.append("div")
+           .attr("class","container")
+           .append("div")
+           .attr("class","row")
+           .append("div")
+           .attr("class","col-xs-8 col-sm-8 col-md-8") 
+
     var divPlot=div
                   .append("div")
-                  .attr("id","plots")
+       //           .attr("id","plots")
                   .style("height",h+2*padding+"px")
 
     var canvas = divPlot.append("canvas")
@@ -101,9 +108,8 @@ function createFig(div,fConf){
 //        .style("position", "relative")
         
 
-
-
     menuStart(div,fConf)
+ 
 
     function clearPlot(div){
 	    div.selectAll(".tempbut").remove(); 
@@ -140,15 +146,37 @@ function createFig(div,fConf){
                 .attr("class","my_plot")
  
     // div areas for controls
-            var fg
+            var fg,
+                row
             var container=div.append("div")
-                            .attr("class","container")
+                            .attr("class","container contPan")
+                            .attr("style","display:none;")
+
+        var contBut=div.append("button")
+            .attr("href","")
+            .attr("type","button")
+            .attr("id","toggleControls")
+            .attr("class","btn btn-default")
+            .text("Show Controls")
+            .on("click", function(){
+                if (container.attr("style")=="display:block;"){
+                    container.attr("style","display:none;")
+                    contBut.text("Controls")
+                }else{
+                    container.attr("style","display:block;")
+                    contBut.text("Hide Controls")
+                    }
+
+            });
+
+
+            
 
             var form=container.append("form")
                     .attr("method","post")
                     .attr("action","/sgdata/save_fig/")
                     .attr("role","form")
-
+                  
 
             var idFld=form.append("input")
                          .attr("type","hidden")
@@ -161,29 +189,30 @@ function createFig(div,fConf){
                 .attr("value",fConf.fill("Submit",false))
                 .attr("name","submitHidden")                     
 
-            row=form.append("div")
-                    .attr("class","row")
+  //          row=form.append("div")
+    //                .attr("class","row")
 
             var butDiv=form.append("div")
-                .attr("class","butDiv col-sm-12 col-md-12 col-xs-12")
+                .attr("class","butDiv row")
 
+        
             var expDiv=form.append("div")
-                .attr("class","expDiv")
+                .attr("class","expDiv row")
     
             var plTypeDiv=form.append("div")
-                .attr("class","plTypeDiv")
+                .attr("class","plTypeDiv row")
 
             var opDiv=form.append("div")
-                .attr("class","opDiv")
+                .attr("class","opDiv row")
 
             var extraDiv=form.append("div")
-                 .attr("class","extraDiv")
+                 .attr("class","extraDiv row")
 
             
 
-            var fs=extraDiv.append("fieldset")
-            fs.append("legend")
-              .text("Additional controls")
+//            var fs=extraDiv.append("fieldset")
+//            fs.append("legend")
+//              .text("Additional controls")
 
 
             fs=expDiv.append("fieldset")
@@ -332,16 +361,18 @@ function createFig(div,fConf){
                 }
 
             
-                if (form.select("#contog")[0][0] !=null){ 
+          //      if (form.select("#contog")[0][0] !=null){ 
 
-                    fConf.set("contog",form.select("#contog")[0][0].checked)
-                }
+         //           fConf.set("contog",form.select("#contog")[0][0].checked)
+         //       }
 
-                 if (form.select("#kmt")[0][0] !=null){ 
-       //         console.log(form.select("#kmt")[0][0].checked)
+                
+//                console.log(form.select("#hiddenKmt"))
+//                 if (form.select("#hiddenKmt")[0][0] !=null){ 
+//                console.log(form.select("#hiddenKmt")[0][0].value)
        
-                        fConf.set("kmt",form.select("#kmt")[0][0].checked)
-                }
+//                        fConf.set("kmt",form.select("#hiddenKmt")[0][0].value)
+//                }
 
 
 
@@ -390,6 +421,7 @@ function createFig(div,fConf){
             })
  
         })
+ //   return container
     }
 
 return div
@@ -503,7 +535,7 @@ function checkChanged(div,expFields,i,checked,initVal){
 
         h.append("label")
          .attr("for","selFld")
-         .text("Fld")
+         .text("Fld ")
  //        .attr("class","control-label col-xs-2 col-sm-2 col-sd-2")
 
 	    fieldSel(h, expFields,initVal)
@@ -545,7 +577,7 @@ function makeChecks(div,data,action,func,type,name,cls,initData,initFuncVals){
     .attr("class",function(d,i){return "checkDiv"+i} )
     .append("span")
     .attr("class","checkSpan")
-    .text(function(d){return d[0]})
+    .text(function(d){return d[0]+' '})
     .append("input")
     .attr("class",cls)
     .attr("type",type)
@@ -1255,8 +1287,8 @@ function rha(div,data,fConf){
     var destDiv=div.select(".butDiv")
               
 
-    var extraDiv=div.select(".extraDiv")
-                .select("fieldset")
+//    var extraDiv=div.select(".extraDiv")
+//                .select("fieldset")
 
     // calculate scales
   
@@ -1278,6 +1310,7 @@ function rha(div,data,fConf){
 
  //       console.log(fConf.fill("cycle3D","0"))
 
+    
         // display button allowing slicing through a 3D field. Last arg initial slice
         addcycler(axob,data,display2D,destDiv,fConf.fill("cycle3D","0"),fConf)
             .attr("id","cycle3D")
@@ -1301,38 +1334,44 @@ function rha(div,data,fConf){
         }
     }
 
-    var geoSpan=extraDiv.append("span")
-                       .attr("class","tempbut")
+ //   var geoSpan=destDiv.append("div")
+ //                      .attr("class","tempbut form-group  col-xs-2 col-sm-2 col-md2")
 
-    geoSpan.append("br")
-    geoSpan.append("label")
-        .attr("for","kmt")
-        .attr("class","tempbut")
-        .text("Overlay geography")
+ //   geoSpan.append("br")
+//    var lbl=geoSpan.append("label")
+//        .attr("for","kmt")
+//        .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
+//        .text("geography")
 
     d3.json(prep_url('P__'+exp+'__G_kmt',ops="nop"),function(error,data){
     if (error){ return console.warn(error)};
-    addtoggle(axob,geoSpan,data,my_kmt,"True","False","click", fConf.fill("kmt" ,false) ).attr("id","kmt").attr("name","kmt")})
+
+
+    addtoggle(axob,destDiv,data,my_kmt,"hiddenKmt","No Geogr","geography","click", fConf.fill("kmt" ,false) )
+                     .attr("id","kmt")
+                    .attr("name","kmt")
+                     .attr("class","btn btn-default tempbut")})
             
-    var exFldSpan=extraDiv.append("span")
-                         .attr("class","tempbut") 
+//    var exFldSpan=extraDiv.append("span")
+//                         .attr("class","tempbut") 
 
-    exFldSpan.append("label")
-            .attr("for","extra_field")
-            .attr("class","tempbut")
-            .text("Overlay Field")
+//    exFldSpan.append("label")
+//            .attr("for","extra_field")
+//            .attr("class","tempbut")
+//            .text("Overlay Field")
 
-    but=exFldSpan
-           .append("text")
+//    but=exFldSpan
+//           .append("text")
 
-    but.attr("id","extra_field")
-       .attr("class","tempbut")
-            .text("extra field")
-            .on("click",function(d){
-   d3.json(prep_url('P__'+exp+'__O_psi',ops="nop"),function(error,data){
-    if (error) return console.warn(error);
-    addtoggle(axob,exFldSpan,data,handle_more_data,"True","False","click",false)})
-             })
+//    but.attr("id","extra_field")
+//       .attr("class","tempbut")
+//            .text("extra field")
+//            .on("click",function(d){
+//   d3.json(prep_url('P__'+exp+'__O_psi',ops="nop"),function(error,data){
+//    if (error) return console.warn(error);
+//    addtoggle(axob,exFldSpan,data,handle_more_data,"hiddenMore","True","False","click",false)})
+//             })
+
 }
 
 
@@ -1364,7 +1403,7 @@ function display2D(axob,data,fConf){
 //            .attr("class","tempbut control-label col-sm-2")
 //            .text("Colormap")
 
-    makeDropdown(destDiv.append("div").attr("class","col-xs-2  col-sm-2  col-md-2"),d3.keys(cmaps),fConf.fill("cmap",""),makeUpdateCmap(data,axob.div,num_col))
+    makeDropdown(destDiv.append("div").attr("class","tempbut col-xs-2  col-sm-2  col-md-2"),d3.keys(cmaps),fConf.fill("cmap",""),makeUpdateCmap(data,axob.div,num_col))
     .attr("class","tempbut form-control input-sm")
     .attr("name","colormap")
     .attr("id","cmap")
@@ -1387,35 +1426,38 @@ function display2D(axob,data,fConf){
     axob.svg.selectAll(".my_colorbar").remove()
     elms = elms.concat(colorbar(axob.svg,data.m,data.M,30, axob.wcb,axob.padding,data.units,colours) );
 
-    fg=destDiv.append("div")
-        .attr("class","tempbut form-group")
+//    fg=destDiv.append("div")
+//        .attr("class","tempbut form-group")
 
     // add toggle for contour overlay
-    destDiv.append("label")
-            .attr("for","contog")
-            .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
-            .text("Contours")
+//    var lbl=fg.append("label")
+//            .attr("for","contog")
+//            .attr("class","tempbut control-label col-xs-2 col-sm-2 col-md2")
+//            .text("Contours")
  
-    elms = elms.push(addtoggle(axob,fg.append("div").attr("class","col-xs-2 col-sm-2 col-md2"),data,handle_more_data,"True","False","click",fConf.fill("contog",false) ).attr("id","contog").attr('name','contog').attr("class"," form-control"))
+    elms = elms.push(addtoggle(axob,destDiv,data,handle_more_data,"hiddenCont","Conts off","Contours","click",fConf.fill("contog",false) )
+               .attr("id","contog").attr('name','contog').attr("class","btn btn-default  tempbut"))
 
     return elms
 }
 
 
 
-function toggle(w,axob,data,but,func,onms,offms){
+function toggle(w,axob,data,but,func,onms,offms,hiddenF){
 
     if (w==false){
-//        but.text(onms)
+        but.text(onms)
+        hiddenF.attr("value","True")
         return func(axob,data);
     }else{
         w.remove()
-//        but.text(offms)
+        but.text(offms)
+        hiddenF.attr("value","False")        
         return false
     }    
 };
 
-function addtoggle(axob,controlDiv,data,func,onms,offms,action,initBool){
+function addtoggle(axob,controlDiv,data,func,hiddenFid,onms,offms,action,initBool){
     // adds interactive element to toggle content of div
 
     var w,
@@ -1426,30 +1468,40 @@ function addtoggle(axob,controlDiv,data,func,onms,offms,action,initBool){
 //    but=controlDiv.append(tag)
 //            .attr("class","tempbut")
 
-    but=controlDiv.append("input")
-            .attr("type","checkbox")
-  //          .attr("value","false")
+    but=controlDiv.append("button")
+
+            .attr("type","button")
+     //       .attr("value","False")
             .attr("class","tempbut")
-            .attr("value","True")
+            .text(offms)
+
+
+    var hiddenF=controlDiv.append("input")
+                         .attr("type","hidden")
+                         .attr("value","False")
+                         .attr("id",hiddenFid)
+                        .attr("name",hiddenFid)
+                        .attr("class","tempbut")
 
     if (initBool){
-        w=toggle(false,axob,data,but,func,onms,offms)
-        but.attr("checked","true")
+        w=toggle(false,axob,data,but,func,onms,offms,hiddenF)
+        hiddenF.attr("value","True")
+        but.text(onms)
         but.on(action,function(d){
             // need to wrap toggle var w inside here:
-                w=toggle(w,axob,data,but,func,onms,offms)
+                w=toggle(w,axob,data,but,func,onms,offms,hiddenF)
             
                 but.on(action,function(d){
-                    w=toggle(w,axob,data,but,func,onms,offms)   
+                    w=toggle(w,axob,data,but,func,onms,offms,hiddenF)   
                 });
             }) 
     }else{        
         but.on(action,function(d){
             // need to wrap toggle var w inside here:
-                w=toggle(false,axob,data,but,func,onms,offms)
+                w=toggle(false,axob,data,but,func,onms,offms,hiddenF)
             
                 but.on(action,function(d){
-                w=toggle(w,axob,data,but,func,onms,offms)   
+                    w=toggle(w,axob,data,but,func,onms,offms,hiddenF)   
             });
         })
     }

@@ -687,7 +687,7 @@ def save_fig(request):
     cycle3D = 'None'
 
   try:
-    contog = request.POST['contog']
+    contog = request.POST['hiddenCont']
     if (contog == 'True'):
       contog = True
     else:
@@ -701,7 +701,7 @@ def save_fig(request):
     cmap = 'False'
 
   try:
-    kmt = request.POST['kmt']
+    kmt = request.POST['hiddenKmt']
     if (kmt == 'True'):
       kmt = True
     else:
